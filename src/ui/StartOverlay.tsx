@@ -7,7 +7,9 @@ export function StartOverlay({ onStart }: Props) {
   return (
     <div className="overlay">
       <h1>Locked Groove</h1>
-      <p>milestone 1 — clock &amp; sync</p>
+      <p>
+        ← → (or A/D) to switch lanes. Catch the notes; catch the world pieces.
+      </p>
       <button onClick={onStart}>Drop the needle</button>
     </div>
   );

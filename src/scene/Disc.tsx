@@ -4,6 +4,8 @@ import type { Group } from "three";
 import { clockState } from "../game/clockState";
 import { DISC_RADIUS, DISC_THICKNESS, LABEL_RADIUS } from "../game/constants";
 import { discRotation } from "../game/geometry";
+import { Diorama } from "./Diorama";
+import { Items } from "./Items";
 
 const GROOVE_RADII = [1.6, 2.1, 2.6, 3.1, 3.6, 4.1, 4.6];
 
@@ -53,16 +55,10 @@ export function Disc() {
         <meshStandardMaterial color="#3a2a16" roughness={0.8} />
       </mesh>
 
-      {/* debug: bright marker at authored beat 0, rim side — must sweep past
-          the player exactly when beatPos crosses a multiple of 8 */}
-      <mesh position={[4.7, DISC_THICKNESS / 2 + 0.06, 0]}>
-        <boxGeometry args={[0.12, 0.12, 0.12]} />
-        <meshStandardMaterial
-          color="#7cc4ff"
-          emissive="#7cc4ff"
-          emissiveIntensity={1.2}
-        />
-      </mesh>
+      {/* items are pressed into the grooves — they live in disc space and
+          rotate with the record, as does the world being built on the label */}
+      <Items />
+      <Diorama />
     </group>
   );
 }

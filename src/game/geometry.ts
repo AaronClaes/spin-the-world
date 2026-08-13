@@ -15,7 +15,9 @@ export const bandCenter = (progress: number, r0: number, r1: number) =>
   r0 + (r1 - r0) * progress;
 
 // Lane 0 is innermost (toward the world), lane 2 outermost (toward the rim).
-export const laneRadius = (lane: Lane, center: number, gap: number) =>
+// Accepts fractional lanes: the runner's *visual* radius interpolates between
+// lanes while the committed integer lane switches instantly (spec §6.4).
+export const laneRadius = (lane: number, center: number, gap: number) =>
   center + (lane - 1) * gap;
 
 // Items are pressed into the groove where the needle will be when they

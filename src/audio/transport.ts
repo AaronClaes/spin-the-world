@@ -30,8 +30,8 @@ export async function startPlayback(record: RecordDef, onEnded: () => void) {
     // Track end: pause (not stop — stop resets position) so beatPos freezes
     // at totalBeats and the needle-lift moment stays inspectable.
     transport.scheduleOnce(
-      () => {
-        transport.pause();
+      (time) => {
+        transport.pause(time);
         onEnded();
       },
       beatsToSeconds(record.totalBeats, record.bpm),

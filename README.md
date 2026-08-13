@@ -20,4 +20,5 @@ npm run build  # production build
 ## Credits
 
 - Music: sequenced with [Tone.js](https://tonejs.github.io/)
-- (Asset credits will be listed here and on the title screen as they are added)
+- Placeholder runner: Knight from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0
+- (Further asset credits will be listed here and on the title screen as they are added)
