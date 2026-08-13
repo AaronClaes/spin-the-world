@@ -1,7 +1,7 @@
 import * as Tone from "tone";
 import { beatsToSeconds, secondsToBeats } from "../game/clock";
 import type { RecordDef } from "../records/meadow";
-import { scheduleDrumStem } from "../music/meadow";
+import { scheduleMeadowMusic } from "../music/meadow";
 import { syncProbe } from "./syncProbe";
 
 // The Transport IS the game clock (spec §6.2). beatPos is derived, never
@@ -10,7 +10,12 @@ export const getBeatPos = (bpm: number) =>
   secondsToBeats(Tone.getTransport().seconds, bpm);
 
 let scheduled = false;
+let probeBeat = 0;
+let endEventId: number | null = null;
 
+// Starts a run from beat 0 — both the first play and every restart. Music
+// parts are scheduled once and live on the Transport forever; stopping the
+// Transport rewinds them along with everything else.
 export async function startPlayback(record: RecordDef, onEnded: () => void) {
   await Tone.start();
   const transport = Tone.getTransport();
@@ -18,26 +23,30 @@ export async function startPlayback(record: RecordDef, onEnded: () => void) {
 
   if (!scheduled) {
     scheduled = true;
-    scheduleDrumStem();
-
-    let probeBeat = 0;
+    scheduleMeadowMusic();
     transport.scheduleRepeat(
       (time) => syncProbe.sample(time, probeBeat++, record.bpm),
       "4n",
       0,
     );
-
-    // Track end: pause (not stop — stop resets position) so beatPos freezes
-    // at totalBeats and the needle-lift moment stays inspectable.
-    transport.scheduleOnce(
-      (time) => {
-        transport.pause(time);
-        onEnded();
-      },
-      beatsToSeconds(record.totalBeats, record.bpm),
-    );
   }
 
+  // Rewind (a no-op before the first play). The end-of-track event must be
+  // re-armed per run — scheduleOnce events are consumed when they fire.
+  transport.stop();
+  if (endEventId !== null) transport.clear(endEventId);
+  endEventId = transport.scheduleOnce(
+    (time) => {
+      endEventId = null;
+      // Pause, not stop — stop resets position; paused, beatPos freezes at
+      // totalBeats and the needle-lift moment stays inspectable.
+      transport.pause(time);
+      onEnded();
+    },
+    beatsToSeconds(record.totalBeats, record.bpm),
+  );
+
+  probeBeat = 0;
   syncProbe.reset();
   transport.start();
 }

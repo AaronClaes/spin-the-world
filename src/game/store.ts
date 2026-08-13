@@ -1,12 +1,10 @@
 import { create } from "zustand";
 import type { Lane } from "./geometry";
+import { noteScoreAt, PIECE_SCORE } from "./score";
 
 // Event-rate game state (input, score, collected pieces). Frame-rate state
 // lives in clockState, not here — this store re-renders the HUD and diorama,
 // which only change a few times per second at most.
-
-export const NOTE_SCORE = 10; // × combo (spec §8.7)
-export const PIECE_SCORE = 100;
 
 interface GameState {
   lane: Lane; // committed integer — collection resolves against this
@@ -50,7 +48,7 @@ export const useGameStore = create<GameState>((set) => ({
         combo,
         bestCombo: Math.max(s.bestCombo, combo),
         notesHit: s.notesHit + 1,
-        score: s.score + NOTE_SCORE * combo,
+        score: s.score + noteScoreAt(combo),
       };
     }),
 

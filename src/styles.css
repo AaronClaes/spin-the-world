@@ -42,6 +42,36 @@ canvas {
   opacity: 0.6;
 }
 
+/* results: translucent — the finished world keeps spinning behind it */
+.overlay.results {
+  background: rgba(10, 12, 20, 0.45);
+}
+
+.overlay .stars {
+  font-size: 2.6rem;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em; /* recenter: letter-spacing pads the right edge */
+  color: #ffd27a;
+  text-shadow: 0 0 18px rgba(255, 210, 122, 0.45);
+}
+
+.overlay .stars .off {
+  opacity: 0.22;
+  text-shadow: none;
+}
+
+.overlay .stats {
+  text-align: center;
+  line-height: 1.9;
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.overlay .stats .high {
+  color: #ffd27a;
+  opacity: 1;
+}
+
 .overlay button {
   margin-top: 8px;
   padding: 12px 28px;
