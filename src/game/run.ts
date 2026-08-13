@@ -69,6 +69,7 @@ export function resolveCrossings(
     // Re-insert at its next arrival, keeping the list sorted. Radius is a
     // function of beat, so the piece visibly migrates inward with the groove.
     item.beat = retry;
+    item.misses = (item.misses ?? 0) + 1;
     run.items.splice(run.next - 1, 1);
     run.next--;
     let at = run.next;

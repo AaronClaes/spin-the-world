@@ -12,6 +12,8 @@ export interface RunItem {
   lane: Lane;
   status: ItemStatus;
   prop?: string; // pieces only
+  misses?: number; // pieces only: times it has recurred — once missed, it
+  // stays surfaced and visibly rides the disc back around
 }
 
 export const BEATS_PER_BAR = 4;
