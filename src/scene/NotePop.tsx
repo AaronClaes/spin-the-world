@@ -160,7 +160,9 @@ export function NotePop() {
         // twinkle: in fast, out soft; billboarded, alternating tilt
         star.quaternion.copy(camera.quaternion);
         star.rotateZ(k * 0.7 + u * 0.5);
-        star.scale.setScalar(0.085 * size * Math.sin(Math.PI * u));
+        // per-star size variety around a smaller median (0.04–0.09)
+        const starSize = 0.065 + jitter(seed, 4) * 0.05;
+        star.scale.setScalar(starSize * size * Math.sin(Math.PI * u));
       }
     }
   });
