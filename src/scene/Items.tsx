@@ -11,6 +11,7 @@ import { itemLocalAngle, itemRadius } from "../game/geometry";
 import type { RunItem } from "../game/items";
 import { activeRun } from "../game/runState";
 import { usePropClone } from "./dioramaProps";
+import { noteColor } from "./notePalette";
 
 // Items live in disc space — this component renders inside the rotating disc
 // group, so positions are static per beat; only rise/sink animation moves.
@@ -139,8 +140,14 @@ function Notes() {
       }
       d.updateMatrix();
       inst.setMatrixAt(i, d.matrix);
-      // instance color multiplies albedo — dims missed notes as they sink
-      inst.setColorAt(i, shade.current.setScalar(v ? v.dim : 1));
+      // instance colour carries both the note's palette deal and the miss
+      // dimming; the material is white so this IS the note's colour
+      inst.setColorAt(
+        i,
+        shade.current
+          .copy(noteColor(note.beat, note.lane))
+          .multiplyScalar(v ? v.dim : 1),
+      );
     }
     inst.instanceMatrix.needsUpdate = true;
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
@@ -154,10 +161,21 @@ function Notes() {
     >
       <octahedronGeometry args={[0.09]} />
       <meshStandardMaterial
-        color={activeRun.record.accentColor}
-        emissive={activeRun.record.accentColor}
+        color="#ffffff"
+        emissive="#ffffff"
         emissiveIntensity={0.55}
         roughness={0.4}
+        onUpdate={(m) => {
+          // stock three multiplies instance colour into the diffuse only —
+          // tint the glow too, or every note would shine the same white
+          m.onBeforeCompile = (shader) => {
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <emissivemap_fragment>",
+              "#include <emissivemap_fragment>\n" +
+                "#ifdef USE_COLOR\n\ttotalEmissiveRadiance *= vColor;\n#endif",
+            );
+          };
+        }}
       />
     </instancedMesh>
   );

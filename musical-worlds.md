@@ -362,7 +362,7 @@ Lock this once during the art pass and do not revisit it.
 - **No textures anywhere.** Flat-shaded low-poly, `MeshStandardMaterial`, colour and light only.
 - **Vinyl:** near-black base (`#1a1c21`), low roughness so it catches one strong specular streak from the key light. Add concentric groove rings as thin, slightly lighter circles — geometry or a cheap radial normal, not a texture map.
 - **Rotation must read.** Concentric rings are rotation-invariant — a bare disc at 15 RPM barely looks like it's moving. Cheap cues, in order of value: off-centre/asymmetric label art, a few light dust specks on the vinyl surface, and optionally a very slight eccentric wobble like a real pressing. The spinning record is the whole pitch; it has to visibly spin.
-- **Palette:** one warm key light (desk-lamp amber), one cool fill, dark navy void background. Each record gets its own accent colour for notes and its own world palette.
+- **Palette:** one warm key light (desk-lamp amber), one cool fill, dark navy void background. Each record gets its own accent colour (lane guides, piece rings, runner headphones) and its own world palette; collectible notes draw from a shared 6-colour candy palette, dealt deterministically per note so the chart colours identically on every load.
 - **Post:** bloom (subtle), vignette, ACES tone mapping. Optional mild DOF at the near and far extremes of the disc — this is the effect that makes it read as a physical miniature, so try it, but cut it immediately if it costs frames.
 - **Void:** the record floats in near-black with a scatter of dust motes. Nothing else in the scene. This is free atmosphere.
 

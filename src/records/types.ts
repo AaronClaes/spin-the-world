@@ -30,5 +30,6 @@ export interface RecordDef {
   worldPieces: WorldPieceDef[];
   notePatterns: NotePattern[];
 
-  accentColor: string; // per-record colour for notes (spec §9)
+  accentColor: string; // per-record accent: lane guides, piece rings, runner
+  // headphones (spec §9) — notes use the shared palette (scene/notePalette.ts)
 }

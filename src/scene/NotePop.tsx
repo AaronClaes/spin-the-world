@@ -1,11 +1,12 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import type { Group, Mesh } from "three";
+import type { Group, Mesh, MeshStandardMaterial } from "three";
 import { Shape, ShapeGeometry } from "three";
 import { DISC_THICKNESS } from "../game/constants";
 import { itemRadius } from "../game/geometry";
 import type { RunItem } from "../game/items";
 import { activeRun } from "../game/runState";
+import { noteColor } from "./notePalette";
 
 // Catching a note answers with a Mario-coin moment, kept quiet (spec §8.1:
 // feedback, not fireworks): the coin ghost hops up off the groove, spinning,
@@ -104,7 +105,15 @@ export function NotePop() {
         band.endRadius,
         band.laneGap,
       );
-      coins.current[free]?.position.set(0, CATCH_Y, r);
+      const coinMesh = coins.current[free];
+      if (coinMesh) {
+        coinMesh.position.set(0, CATCH_Y, r);
+        // the ghost hops up in the caught note's own palette colour
+        const c = noteColor(pop.beat, pop.lane);
+        const mat = coinMesh.material as MeshStandardMaterial;
+        mat.color.copy(c);
+        mat.emissive.copy(c);
+      }
       bursts.current[free]?.position.set(0, CATCH_Y, r);
     }
 
