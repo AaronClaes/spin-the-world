@@ -33,6 +33,7 @@ import { Disc } from "./Disc";
 import { LaneGuides } from "./LaneGuides";
 import { NeedleNotes } from "./NeedleNotes";
 import { NotePop, launchNotePop } from "./NotePop";
+import { setLastCatchColor } from "./notePalette";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
 import { Tonearm } from "./Tonearm";
@@ -64,6 +65,7 @@ function ClockDriver() {
           const combo = useGameStore.getState().combo;
           sfxNotePickup(combo);
           launchNotePop(e.item, combo);
+          setLastCatchColor(e.item.beat, e.item.lane);
         } else {
           store.missNote();
           sfxNoteMiss();

@@ -24,3 +24,17 @@ export function noteColor(beat: number, lane: number): Color {
   const f = x - Math.floor(x);
   return paletteColors[Math.floor(f * paletteColors.length)];
 }
+
+// The colour of the last note caught — the lane glow, the puck under the
+// runner, and the piece rings all tint toward it, so the world keeps a
+// little afterglow of your latest catch. Gold (the accent) until the first
+// catch; reset on every run start. Readers lerp toward it, never mutate it.
+export const lastCatchColor = new Color(NOTE_PALETTE[0]);
+
+export function setLastCatchColor(beat: number, lane: number) {
+  lastCatchColor.copy(noteColor(beat, lane));
+}
+
+export function resetLastCatchColor() {
+  lastCatchColor.set(NOTE_PALETTE[0]);
+}

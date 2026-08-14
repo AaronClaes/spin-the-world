@@ -13,6 +13,7 @@ import { DISC_THICKNESS } from "../game/constants";
 import { bandCenter, laneRadius } from "../game/geometry";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
+import { lastCatchColor } from "./notePalette";
 
 // Lane readability (the spec's own risk table: "widen laneGap or tilt the
 // camera if lanes are ambiguous" — this is the third mitigation). Two cues,
@@ -21,7 +22,8 @@ import { useGameStore } from "../game/store";
 //
 // - Rails: three thin arcs at the current lane radii, fading in behind the
 //   player and out past the needle — the grooves the needle is reading catch
-//   light. The committed lane glows in the record's accent colour.
+//   light. The committed lane glows in the colour of the last note caught
+//   (accent gold until the first catch), as does the puck.
 // - Puck: an accent ring under the runner that snaps INSTANTLY to the
 //   committed lane while the body lerps after it — collection resolves
 //   against the committed integer lane (spec §6.4), and so does the puck.
@@ -79,6 +81,9 @@ function Rails() {
     const progress = songProgress(clockState.beatPos, totalBeats);
     const center = bandCenter(progress, band.startRadius, band.endRadius);
     const k = 1 - Math.exp(-10 * delta);
+
+    // the glow eases toward the last caught note's colour
+    accent.lerp(lastCatchColor, 1 - Math.exp(-8 * delta));
 
     for (let lane = 0; lane < 3; lane++) {
       const mesh = meshes.current[lane];
@@ -141,6 +146,7 @@ function Puck() {
     m.scale.setScalar(m.scale.x + (1 - m.scale.x) * k);
 
     const mat = m.material as MeshBasicMaterial;
+    mat.color.lerp(lastCatchColor, 1 - Math.exp(-8 * delta));
     const vis =
       clockState.playing && !clockState.ended && !clockState.wall ? 0.9 : 0;
     mat.opacity += (vis - mat.opacity) * k;

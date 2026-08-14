@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { Color, DynamicDrawUsage, InstancedMesh, Group, Object3D } from "three";
+import type { Mesh, MeshBasicMaterial } from "three";
 import {
   BEATS_PER_REV,
   DISC_THICKNESS,
@@ -11,7 +12,7 @@ import { itemLocalAngle, itemRadius } from "../game/geometry";
 import type { RunItem } from "../game/items";
 import { activeRun } from "../game/runState";
 import { usePropClone } from "./dioramaProps";
-import { noteColor } from "./notePalette";
+import { lastCatchColor, noteColor } from "./notePalette";
 
 // Items live in disc space — this component renders inside the rotating disc
 // group, so positions are static per beat; only rise/sink animation moves.
@@ -187,10 +188,17 @@ function Notes() {
 function GroovePiece({ piece }: { piece: RunItem }) {
   const clone = usePropClone(piece.prop as string);
   const group = useRef<Group>(null);
+  const ring = useRef<Mesh>(null);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const g = group.current;
     if (!g) return;
+    // the ring keeps the afterglow of the last note caught
+    if (ring.current)
+      (ring.current.material as MeshBasicMaterial).color.lerp(
+        lastCatchColor,
+        1 - Math.exp(-8 * delta),
+      );
     const v = pieceVisual(piece, clockState.beatPos);
     if (!v) {
       g.visible = false;
@@ -206,7 +214,7 @@ function GroovePiece({ piece }: { piece: RunItem }) {
   return (
     <group ref={group} visible={false}>
       <primitive object={clone} />
-      <mesh rotation-x={-Math.PI / 2} position-y={0.006}>
+      <mesh ref={ring} rotation-x={-Math.PI / 2} position-y={0.006}>
         <ringGeometry args={[0.2, 0.27, 32]} />
         <meshBasicMaterial
           color={activeRun.record.accentColor}

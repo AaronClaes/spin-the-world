@@ -15,6 +15,7 @@ import { applyStemUnlocks, resetAliveMix } from "./music/meadow";
 import { meadow } from "./records/meadow";
 import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
+import { resetLastCatchColor } from "./scene/notePalette";
 import { Scene } from "./scene/Scene";
 import { DebugHud } from "./ui/DebugHud";
 import { Hud } from "./ui/Hud";
@@ -80,6 +81,7 @@ export default function App() {
     resetActiveRun();
     clearFlights();
     clearNotePops();
+    resetLastCatchColor();
     useGameStore.getState().resetRun();
     applyStemUnlocks(0, meadow.stemUnlockAtPieces, true);
     resetAliveMix();
