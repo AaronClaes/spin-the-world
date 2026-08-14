@@ -14,6 +14,7 @@ import { useLaneInput } from "./game/useLaneInput";
 import { applyStemUnlocks, resetAliveMix } from "./music/meadow";
 import { meadow } from "./records/meadow";
 import { clearFlights } from "./scene/flights";
+import { clearNotePops } from "./scene/NotePop";
 import { Scene } from "./scene/Scene";
 import { DebugHud } from "./ui/DebugHud";
 import { Hud } from "./ui/Hud";
@@ -78,6 +79,7 @@ export default function App() {
     // Fresh run state — a no-op on the first play, the actual reset on replay.
     resetActiveRun();
     clearFlights();
+    clearNotePops();
     useGameStore.getState().resetRun();
     applyStemUnlocks(0, meadow.stemUnlockAtPieces, true);
     resetAliveMix();

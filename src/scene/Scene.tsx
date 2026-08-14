@@ -32,6 +32,7 @@ import { CameraRig } from "./CameraRig";
 import { Disc } from "./Disc";
 import { LaneGuides } from "./LaneGuides";
 import { NeedleNotes } from "./NeedleNotes";
+import { NotePop, launchNotePop } from "./NotePop";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
 import { Tonearm } from "./Tonearm";
@@ -60,7 +61,9 @@ function ClockDriver() {
       if (e.item.kind === "note") {
         if (e.collected) {
           store.collectNote();
-          sfxNotePickup(useGameStore.getState().combo);
+          const combo = useGameStore.getState().combo;
+          sfxNotePickup(combo);
+          launchNotePop(e.item, combo);
         } else {
           store.missNote();
           sfxNoteMiss();
@@ -245,6 +248,7 @@ export function Scene({
       <Turntable />
       <Tonearm />
       <NeedleNotes />
+      <NotePop />
       <LaneGuides />
       <Suspense fallback={null}>
         <Disc />
