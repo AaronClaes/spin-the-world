@@ -239,10 +239,10 @@ A record is a JSON file plus a music module. Once the first one renders, every a
 
 ### Authoring rules
 
-- **World pieces roughly every 16 beats** (about every other revolution), unevenly spaced. Cluster two on the same beat in different lanes at least three times per record — this makes single-pass perfection impossible and forces a multi-lap route. **Author all clusters in the first 60% of the track** so recurrence has room to work.
+- **World pieces roughly every 12–16 beats** (about every other revolution), unevenly spaced, **every piece on its own beat**. Same-beat clusters in different lanes were tried and cut: a charted forced miss reads as unfair, not tense. Perfection should be hard because the lane dance is demanding, never because the chart forbids it.
 - **Notes match the drum pattern.** Dense in choruses, sparse in the intro. Expand patterns into concrete `{beat, lane}` at load — never hand-write 90 note entries.
 - Validate on load: no note and world piece on the same beat+lane; every `prop` name exists in the GLB; `totalBeats` is a multiple of 16; `stemUnlockAtPieces` has 4 entries within the piece count.
-- **Prove completability on load.** Pieces recur at +8 beats when missed, but anything whose recurrence lands past `totalBeats` is gone forever, and clusters force misses. Run a small solver over the chart (greedy or brute-force — the choice space is tiny) that verifies a perfect player can collect every piece before the track ends. A chart that fails this check is a bug, not a difficulty setting.
+- **Prove completability on load.** Pieces recur at +8 beats when missed, but anything whose recurrence lands past `totalBeats` is gone forever. Run a small solver over the chart (greedy or brute-force — the choice space is tiny) that verifies a perfect player can collect every piece before the track ends. A chart that fails this check is a bug, not a difficulty setting.
 
 ---
 
@@ -448,7 +448,7 @@ Never cut: audio sync, the diorama assembling, SFX, the title screen, pause, mob
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Audio sync drifts                      | Derive `beatPos` from the Transport — they are the same number. Verify at milestone 1.                                                                         |
 | Sequenced music sounds cheap           | Reference track per genre, `Tone.Sampler` with real one-shots, shared effects bus, half-day timebox per record. This is the biggest risk left — front-load it. |
-| A chart can't be completed perfectly   | Load-time solver proves every piece is collectable (§7). Author clusters in the first 60% of the track.                                                        |
+| A chart can't be completed perfectly   | Load-time solver proves every piece is collectable (§7). Every piece sits on its own beat — no charted forced misses.                                          |
 | Radial lane motion reads confusingly   | Get a second pair of eyes as soon as it is playable. Widen `laneGap` or tilt the camera if lanes are ambiguous.                                                |
 | Disc doesn't read as spinning          | 8 beats/rev = 15 RPM at 120bpm, plus off-centre label art and surface specks (§9).                                                                             |
 | Autoplay blocked by browser            | Clicking a record on the wall is the user gesture that starts the AudioContext.                                                                                |

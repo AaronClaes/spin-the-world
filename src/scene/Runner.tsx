@@ -108,13 +108,18 @@ export function Runner() {
     }
 
     if (running && actions.Running_A) {
-      // Feet must match the vinyl passing underneath: ω·r over stride speed.
+      // Feet track the vinyl passing underneath (ω·r over stride speed),
+      // but square-rooted around the track-start radius: fully physical
+      // cadence halves the stride by the label, which reads as wading, not
+      // running. Softened, the spiral-in still slows the runner — gently.
       // Paused, the clip freezes mid-stride (spec §8.8) — the disc is frozen
       // too, so switching to Idle would read as the runner giving up.
       const omega = RAD_PER_BEAT * (meadow.bpm / 60); // rad/s
+      const ref = meadow.band.startRadius;
+      const soft = ref * Math.sqrt(Math.max(0, radius) / ref);
       actions.Running_A.timeScale = clockState.paused
         ? 0
-        : (omega * radius) / STRIDE_SPEED;
+        : (omega * soft) / STRIDE_SPEED;
     }
   });
 

@@ -7,9 +7,9 @@ export type { RecordDef } from "./types";
 //   4). Every note pattern leaves step 6 empty in all lanes, so pieces never
 //   share a beat+lane with a note — and since recurrence is +8 beats, a
 //   recurring piece can't collide with a note either.
-// - Three clusters (two pieces, same beat, different lanes) at beats 27, 75
-//   and 99 — all inside the first 60% of the track (spec §7) so recurrence
-//   has room to work.
+// - Every piece has its own beat (spec §7): same-beat clusters were cut —
+//   a charted forced miss reads as unfair. Steady 12-beat spacing through
+//   the mid-track, opening up toward the end.
 export const meadow: RecordDef = {
   id: "meadow",
   title: "Meadow 45",
@@ -27,12 +27,12 @@ export const meadow: RecordDef = {
   worldPieces: [
     { id: "wp01", beat: 15, lane: 1, prop: "mill" },
     { id: "wp02", beat: 27, lane: 0, prop: "cottage" },
-    { id: "wp03", beat: 27, lane: 2, prop: "oak" }, // cluster 1
+    { id: "wp03", beat: 39, lane: 2, prop: "oak" },
     { id: "wp04", beat: 51, lane: 2, prop: "pond" },
-    { id: "wp05", beat: 75, lane: 0, prop: "sheep" },
-    { id: "wp06", beat: 75, lane: 2, prop: "fence" }, // cluster 2
-    { id: "wp07", beat: 99, lane: 1, prop: "haycart" },
-    { id: "wp08", beat: 99, lane: 0, prop: "flowers" }, // cluster 3
+    { id: "wp05", beat: 63, lane: 0, prop: "sheep" },
+    { id: "wp06", beat: 75, lane: 2, prop: "fence" },
+    { id: "wp07", beat: 87, lane: 1, prop: "haycart" },
+    { id: "wp08", beat: 99, lane: 0, prop: "flowers" },
     { id: "wp09", beat: 123, lane: 2, prop: "birch" },
     { id: "wp10", beat: 147, lane: 1, prop: "well" },
   ],

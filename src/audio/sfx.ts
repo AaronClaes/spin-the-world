@@ -51,8 +51,8 @@ export function initSfx() {
     volume: -4,
   }).connect(out);
 
-  // the skip's body thud is its own synth — a cluster can resolve a pickup
-  // AND a skip in the same frame, and one membrane can't play both
+  // the skip's body thud is its own synth — a slow frame can resolve a
+  // pickup AND a skip together, and one membrane can't play both
   thud = new Tone.MembraneSynth({
     pitchDecay: 0.08,
     octaves: 3,
@@ -111,12 +111,11 @@ export function sfxNotePickup(combo: number) {
   );
 }
 
-// A slow frame can resolve several items at once, and charted clusters put
-// two pieces on the SAME beat — either way a mono synth would be triggered
-// twice at an identical time, which Tone's scheduler rejects (and the throw
-// would abort the resolve loop mid-frame). Nudge repeat events forward — it
-// reads as a fast double-hit — and swallow anything that still slips through:
-// a dropped SFX is fine, a broken frame is not.
+// A slow frame can resolve several items at once, so a mono synth can be
+// triggered twice at an identical time, which Tone's scheduler rejects (and
+// the throw would abort the resolve loop mid-frame). Nudge repeat events
+// forward — it reads as a fast double-hit — and swallow anything that still
+// slips through: a dropped SFX is fine, a broken frame is not.
 let lastPickupT = -1;
 let lastSkipT = -1;
 let lastTickT = -1;
