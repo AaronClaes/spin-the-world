@@ -59,53 +59,62 @@ export function Tonearm() {
     yawGroup.current.rotation.y = Math.atan2(dx, dz);
     tiltGroup.current.rotation.x = -LIFT_TILT * lift.current;
 
-    tube.current.scale.z = dist;
+    // scale acts on the cylinder's LOCAL axes before its rotation-x — the
+    // height axis is local Y, which the rotation then points along +Z
+    tube.current.scale.y = dist;
     tube.current.position.z = dist / 2;
     head.current.position.z = dist;
   });
 
   return (
     <group position={[PIVOT_X, 0, PIVOT_Z]}>
-      {/* pivot post */}
-      <mesh position-y={0.22}>
-        <cylinderGeometry args={[0.16, 0.2, 0.44, 24]} />
-        <meshStandardMaterial color="#3a3d45" roughness={0.4} metalness={0.6} />
+      {/* chunky toy-machine proportions in light metals: at gameplay
+          distance a realistic thin arm dissolves into disconnected blobs
+          against the daylight sky — cartoony thickness makes the pivot,
+          tube and headshell read as ONE machine */}
+      <mesh position-y={0.26}>
+        <cylinderGeometry args={[0.2, 0.26, 0.52, 24]} />
+        <meshStandardMaterial
+          color="#c3c9d4"
+          roughness={0.45}
+          metalness={0.3}
+        />
       </mesh>
 
       <group ref={yawGroup} position-y={ARM_Y}>
         <group ref={tiltGroup}>
           {/* counterweight behind the pivot */}
-          <mesh position-z={-0.42}>
-            <cylinderGeometry args={[0.14, 0.14, 0.24, 20]} />
+          <mesh position-z={-0.46} rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.19, 0.19, 0.3, 20]} />
             <meshStandardMaterial
-              color="#2c2f36"
-              roughness={0.3}
-              metalness={0.7}
+              color="#9aa1ad"
+              roughness={0.35}
+              metalness={0.5}
             />
           </mesh>
 
           {/* arm tube — unit length along +Z, stretched to the needle point */}
           <mesh ref={tube} rotation-x={Math.PI / 2}>
-            <cylinderGeometry args={[0.045, 0.045, 1, 12]} />
+            <cylinderGeometry args={[0.09, 0.09, 1, 12]} />
             <meshStandardMaterial
-              color="#8b8f98"
-              roughness={0.25}
-              metalness={0.8}
+              color="#d5dae2"
+              roughness={0.3}
+              metalness={0.5}
             />
           </mesh>
 
           {/* headshell + stylus, dipping toward the vinyl */}
           <group ref={head}>
             <mesh position-y={-0.09} rotation-x={0.35}>
-              <boxGeometry args={[0.12, 0.09, 0.3]} />
+              <boxGeometry args={[0.17, 0.13, 0.42]} />
               <meshStandardMaterial
                 color="#c9873d"
                 roughness={0.4}
                 metalness={0.4}
               />
             </mesh>
-            <mesh position-y={-0.28} rotation-x={Math.PI}>
-              <coneGeometry args={[0.025, 0.22, 8]} />
+            <mesh position-y={-0.3} rotation-x={Math.PI}>
+              <coneGeometry args={[0.04, 0.26, 8]} />
               <meshStandardMaterial color="#dde1e8" roughness={0.3} />
             </mesh>
           </group>

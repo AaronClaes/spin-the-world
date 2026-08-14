@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Bloom,
   EffectComposer,
@@ -7,7 +7,13 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useMemo, useRef } from "react";
-import type { AmbientLight, DirectionalLight, Points } from "three";
+import type {
+  AmbientLight,
+  DirectionalLight,
+  HemisphereLight,
+  Points,
+} from "three";
+import { Color } from "three";
 import {
   sfxNoteMiss,
   sfxNotePickup,
@@ -78,29 +84,78 @@ function ClockDriver() {
   return null;
 }
 
-// Warm key (desk-lamp amber) + cool fill, per the art direction. When the
-// world comes alive the key and ambient ease up — the "warm the lighting"
-// half of spec §8.4's completion moment.
+// Two lighting worlds: the studio wall stays a lamp-lit room (amber key,
+// low ambient — the look is locked), while the game plays in cartoon
+// daylight — bright sky background, sunlight key, hemisphere fill — so the
+// near-black vinyl pops against the environment instead of dissolving into
+// a void. Both the sky and the lights crossfade on the needle-drop dive.
+
+const WALL_BG = new Color("#0a0c14");
+const DAY_BG = new Color("#a5d9f5");
+const LAMP_KEY = new Color("#ffc98a");
+const SUN_KEY = new Color("#fff2d0");
+const keyColorTarget = new Color();
+
+// The Canvas scene background, lerped between night void and day sky as the
+// camera flies between the wall and the record.
+function Sky() {
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+
+  useMemo(() => {
+    scene.background = WALL_BG.clone();
+    // dev-only handles for headless scene inspection
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __scene: unknown; __cam: unknown };
+      w.__scene = scene;
+      w.__cam = camera;
+    }
+  }, [scene, camera]);
+
+  useFrame((_, delta) => {
+    (scene.background as Color).lerp(
+      clockState.wall ? WALL_BG : DAY_BG,
+      1 - Math.exp(-3.5 * delta),
+    );
+  });
+
+  return null;
+}
+
+// When the world comes alive the key and ambient ease up — the "warm the
+// lighting" half of spec §8.4's completion moment.
 function Lights() {
   const key = useRef<DirectionalLight>(null);
   const ambient = useRef<AmbientLight>(null);
+  const hemi = useRef<HemisphereLight>(null);
 
   useFrame((_, delta) => {
     const alive =
       useGameStore.getState().piecesCollected.length ===
       activeRun.record.worldPieces.length;
+    const day = !clockState.wall;
     const k = 1 - Math.exp(-1.5 * delta);
-    if (key.current)
-      key.current.intensity +=
-        ((alive ? 3.8 : 2.7) - key.current.intensity) * k;
+    if (key.current) {
+      const target = day ? (alive ? 3.2 : 2.5) : 2.7;
+      key.current.intensity += (target - key.current.intensity) * k;
+      key.current.color.lerp(keyColorTarget.copy(day ? SUN_KEY : LAMP_KEY), k);
+    }
     if (ambient.current)
       ambient.current.intensity +=
-        ((alive ? 0.75 : 0.45) - ambient.current.intensity) * k;
+        ((day ? (alive ? 1.0 : 0.8) : 0.45) - ambient.current.intensity) * k;
+    if (hemi.current)
+      hemi.current.intensity += ((day ? 0.65 : 0) - hemi.current.intensity) * k;
   });
 
   return (
     <>
       <ambientLight ref={ambient} intensity={0.45} />
+      <hemisphereLight
+        ref={hemi}
+        intensity={0}
+        color="#cde6f7"
+        groundColor="#d9c49a"
+      />
       <directionalLight
         ref={key}
         position={[6, 8, 4]}
@@ -116,9 +171,10 @@ function Lights() {
   );
 }
 
-// The record floats in a near-black void with a scatter of dust motes —
-// free atmosphere (spec §9), and the slow counter-drift makes the disc's
-// spin read even at the rim.
+// The record floats in open sky with a scatter of dust motes — free
+// atmosphere (spec §9), and the slow counter-drift makes the disc's spin
+// read even at the rim. Tinted just below the sky so they read as specks
+// drifting in the sunlight.
 const MOTE_COUNT = 160;
 
 function DustMotes() {
@@ -150,11 +206,11 @@ function DustMotes() {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        color="#9aa6c8"
+        color="#8ba6bd"
         size={0.022}
         sizeAttenuation
         transparent
-        opacity={0.45}
+        opacity={0.5}
         depthWrite={false}
       />
     </points>
@@ -177,7 +233,7 @@ export function Scene({
 }) {
   return (
     <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
-      <color attach="background" args={["#0a0c14"]} />
+      <Sky />
 
       <ClockDriver />
       <CameraRig />
@@ -192,16 +248,18 @@ export function Scene({
         {wall && <WallScene onStart={onStart} />}
       </Suspense>
 
-      {/* subtle post stack (spec §9): bloom for the emissive accents,
-          vignette for the miniature-under-a-lamp feel, ACES tone mapping */}
+      {/* subtle post stack (spec §9): bloom for the emissive accents, ACES
+          tone mapping. On the wall the vignette keeps the lamp-lit room
+          feel; in daylight it eases way off and the bloom threshold rises
+          above the bright sky so the sky itself never glows */}
       <EffectComposer>
         <Bloom
-          intensity={0.5}
-          luminanceThreshold={0.75}
+          intensity={wall ? 0.5 : 0.35}
+          luminanceThreshold={wall ? 0.75 : 0.92}
           luminanceSmoothing={0.2}
           mipmapBlur
         />
-        <Vignette offset={0.2} darkness={0.55} />
+        <Vignette offset={wall ? 0.2 : 0.12} darkness={wall ? 0.55 : 0.22} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </Canvas>

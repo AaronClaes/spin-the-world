@@ -213,14 +213,15 @@ canvas {
 
 /* ------------------------------------------------------ shipping HUD ---- */
 
+/* the HUD floats over daylight sky — dark ink, soft light halo */
 .game-hud {
   position: absolute;
   top: 16px;
   left: 18px;
-  color: #e8e2d5;
+  color: #2c3140;
   font-family: system-ui, sans-serif;
   pointer-events: none;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.5);
 }
 
 .game-hud .score {
@@ -236,7 +237,7 @@ canvas {
 }
 
 .game-hud .combo.hot {
-  color: #ffd27a;
+  color: #b06f10;
   opacity: 1;
 }
 
@@ -255,13 +256,13 @@ canvas {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1.5px solid rgba(232, 226, 213, 0.55);
+  border: 1.5px solid rgba(44, 49, 64, 0.45);
 }
 
 .piece-dots .dot.got {
-  background: #ffd27a;
-  border-color: #ffd27a;
-  box-shadow: 0 0 8px rgba(255, 210, 122, 0.55);
+  background: #e8a33d;
+  border-color: #c9861f;
+  box-shadow: 0 0 8px rgba(232, 163, 61, 0.55);
 }
 
 .piece-dots .dot.lost {
@@ -322,7 +323,7 @@ canvas {
 
 @media (hover: none) {
   .touch-zones .zone {
-    color: rgba(232, 226, 213, 0.16);
+    color: rgba(44, 49, 64, 0.22);
   }
 }
 
