@@ -388,7 +388,7 @@ canvas {
    the runner below, no glancing to a corner mid-run */
 .game-hud {
   position: absolute;
-  top: 38px;
+  top: 48px;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
@@ -413,7 +413,7 @@ canvas {
 }
 
 .game-hud .score {
-  font-size: 2rem;
+  font-size: 3rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.1;
@@ -434,9 +434,9 @@ canvas {
 
 .score-float {
   position: absolute;
-  left: calc(100% + 12px);
+  left: calc(100% + 14px);
   top: 0.35em;
-  font-size: 1rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--flash, #b06f10);
   animation: score-float 0.8s ease-out forwards;
@@ -537,7 +537,7 @@ canvas {
   position: absolute;
   left: 50%;
   top: 0;
-  font-size: 1.6rem;
+  font-size: 2.4rem;
   font-weight: 800;
   color: #4a5064;
   pointer-events: none;
@@ -563,20 +563,20 @@ canvas {
 /* one dot per world piece — the only goal readout the HUD needs */
 .piece-dots {
   position: absolute;
-  top: 22px;
+  top: 18px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 7px;
+  gap: 10px;
   pointer-events: none;
 }
 
 .piece-dots .dot {
   position: relative;
-  width: 9px;
-  height: 9px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 1.5px solid rgba(44, 49, 64, 0.45);
+  border: 2px solid rgba(44, 49, 64, 0.45);
 }
 
 .piece-dots .dot.got {
@@ -590,7 +590,7 @@ canvas {
 .piece-dots .dot.got::after {
   content: "";
   position: absolute;
-  inset: -7px;
+  inset: -10px;
   border-radius: 50%;
   border: 2px solid rgba(232, 163, 61, 0.85);
   animation: dot-ring 0.55s ease-out forwards;
@@ -750,7 +750,7 @@ canvas {
   }
 
   .game-hud .score {
-    font-size: 1.25rem;
+    font-size: 1.9rem;
   }
 
   .star {

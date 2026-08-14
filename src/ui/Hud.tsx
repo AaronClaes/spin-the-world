@@ -132,7 +132,7 @@ function Combo() {
             key={combo}
             className={`combo-chip ${tier}`}
             style={{
-              fontSize: `${(1 + Math.min(combo, 16) * 0.08).toFixed(2)}rem`,
+              fontSize: `${(1.5 + Math.min(combo, 16) * 0.12).toFixed(2)}rem`,
             }}
           >
             ×{combo} <span className="combo-word">combo</span>
