@@ -1,25 +1,26 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
-import { Group, Mesh } from "three";
-import { DISC_THICKNESS } from "../game/constants";
+import type { Group } from "three";
+import { DISC_THICKNESS, LABEL_RADIUS } from "../game/constants";
 import { itemLocalAngle, itemRadius } from "../game/geometry";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
+import { usePropClone } from "./dioramaProps";
 import { activeFlights, FLIGHT_DURATION } from "./flights";
 
-// M3 diorama: still grey boxes (real props are the art pass), but pieces now
-// fly in from the groove with an arc (spec §8.4), the box scales in with an
-// overshoot when the flight lands, and on full completion the whole label
-// gently comes alive — boxes bob and slowly turn.
+// The tiny world on the label (spec §8.4): real kitbashed props now — each
+// collected piece flies in from its groove with an arc and plants itself with
+// an overshoot. On full completion the world comes alive: everything bobs
+// and the whole meadow slowly breathes with the music.
 
 const GOLDEN_ANGLE = 2.399963;
 const DISC_TOP = DISC_THICKNESS / 2;
 const ARC_HEIGHT = 0.85;
-const MAX_VISIBLE_FLIGHTS = 4;
+const GRASS_RADIUS = LABEL_RADIUS - 0.12; // label paper stays visible as a rim
 
 function slotPosition(index: number, count: number): [number, number] {
   const angle = index * GOLDEN_ANGLE;
-  const r = 0.3 + 0.6 * Math.sqrt((index + 0.5) / count);
+  const r = 0.28 + 0.55 * Math.sqrt((index + 0.5) / count);
   return [Math.sin(angle) * r, Math.cos(angle) * r];
 }
 
@@ -34,97 +35,94 @@ const easeInOutQuad = (t: number) =>
 
 // ------------------------------------------------------------ fly-in arc ----
 
-// A small pool of meshes animated imperatively — flights are transient and
-// at most a couple overlap (a same-frame double catch of recurred pieces).
+// One pre-cloned prop per world piece; a flight shows and moves its own prop.
+// The clone's node transform is the kitbash normalization — position the
+// wrapper, never the clone.
+function FlightProp({ prop }: { prop: string }) {
+  const clone = usePropClone(prop);
+  const group = useRef<Group>(null);
+
+  useFrame(({ clock }) => {
+    const g = group.current;
+    if (!g) return;
+    const f = activeFlights.find((fl) => fl.prop === prop);
+    if (!f || f.startedAt === null) {
+      g.visible = false;
+      return;
+    }
+    const { band, totalBeats, worldPieces } = activeRun.record;
+    const t = easeInOutQuad(
+      Math.min(1, (clock.elapsedTime - f.startedAt) / FLIGHT_DURATION),
+    );
+    const angle = itemLocalAngle(f.beat);
+    const r = itemRadius(
+      f.lane,
+      f.beat,
+      totalBeats,
+      band.startRadius,
+      band.endRadius,
+      band.laneGap,
+    );
+    const slot = worldPieces.findIndex((p) => p.prop === prop);
+    const [sx, sz] = slotPosition(slot, worldPieces.length);
+
+    const x0 = Math.sin(angle) * r;
+    const z0 = Math.cos(angle) * r;
+    g.visible = true;
+    g.position.set(
+      x0 + (sx - x0) * t,
+      DISC_TOP + 0.015 + ARC_HEIGHT * 4 * t * (1 - t),
+      z0 + (sz - z0) * t,
+    );
+    g.rotation.y = t * Math.PI * 2 + slot * GOLDEN_ANGLE;
+  });
+
+  return (
+    <group ref={group} visible={false}>
+      <primitive object={clone} />
+    </group>
+  );
+}
+
 function Flights() {
-  const pool = useRef<(Mesh | null)[]>([]);
+  const props = activeRun.record.worldPieces.map((p) => p.prop);
 
   useFrame(({ clock }) => {
     const now = clock.elapsedTime;
-    const { band, totalBeats, worldPieces } = activeRun.record;
-
     for (let i = activeFlights.length - 1; i >= 0; i--) {
       const f = activeFlights[i];
       if (f.startedAt === null) f.startedAt = now;
       if (now - f.startedAt >= FLIGHT_DURATION) activeFlights.splice(i, 1);
     }
-
-    for (let i = 0; i < MAX_VISIBLE_FLIGHTS; i++) {
-      const mesh = pool.current[i];
-      if (!mesh) continue;
-      const f = activeFlights[i];
-      if (!f || f.startedAt === null) {
-        mesh.visible = false;
-        continue;
-      }
-
-      const t = easeInOutQuad(
-        Math.min(1, (clock.elapsedTime - f.startedAt) / FLIGHT_DURATION),
-      );
-      const angle = itemLocalAngle(f.beat);
-      const r = itemRadius(
-        f.lane,
-        f.beat,
-        totalBeats,
-        band.startRadius,
-        band.endRadius,
-        band.laneGap,
-      );
-      const slot = worldPieces.findIndex((p) => p.prop === f.prop);
-      const [sx, sz] = slotPosition(slot, worldPieces.length);
-
-      const x0 = Math.sin(angle) * r;
-      const z0 = Math.cos(angle) * r;
-      mesh.visible = true;
-      mesh.position.set(
-        x0 + (sx - x0) * t,
-        DISC_TOP + 0.16 + ARC_HEIGHT * 4 * t * (1 - t),
-        z0 + (sz - z0) * t,
-      );
-      mesh.rotation.y = t * Math.PI * 2;
-      mesh.scale.setScalar(1 - 0.35 * t); // shrinks toward miniature scale
-    }
   });
 
   return (
     <>
-      {Array.from({ length: MAX_VISIBLE_FLIGHTS }, (_, i) => (
-        <mesh
-          key={i}
-          ref={(m) => {
-            pool.current[i] = m;
-          }}
-          visible={false}
-        >
-          <boxGeometry args={[0.22, 0.22, 0.22]} />
-          <meshStandardMaterial
-            color="#e8e9ec"
-            emissive="#ffffff"
-            emissiveIntensity={0.3}
-            roughness={0.5}
-          />
-        </mesh>
+      {props.map((prop) => (
+        <FlightProp key={prop} prop={prop} />
       ))}
     </>
   );
 }
 
-// ------------------------------------------------------------ label boxes ----
+// ------------------------------------------------------------ the world ----
 
-function PieceBox({
+function PlantedProp({
+  prop,
   index,
   count,
   alive,
 }: {
+  prop: string;
   index: number;
   count: number;
   alive: boolean;
 }) {
+  const clone = usePropClone(prop);
   const group = useRef<Group>(null);
   const bornAt = useRef<number | null>(null);
   const [x, z] = slotPosition(index, count);
-  const height = 0.12 + (index % 3) * 0.05;
-  const baseY = DISC_TOP + height / 2 + 0.01;
+  const baseY = DISC_TOP + 0.014; // standing on the grass
 
   useFrame(({ clock }, delta) => {
     if (!group.current) return;
@@ -133,26 +131,36 @@ function PieceBox({
       bornAt.current = clock.elapsedTime + FLIGHT_DURATION;
     const t = (clock.elapsedTime - bornAt.current) / 0.45;
     if (t < 0) {
-      group.current.scale.setScalar(0);
+      group.current.scale.setScalar(0.0001);
       return;
     }
     group.current.scale.setScalar(easeOutBack(Math.min(1, t)));
 
     if (alive) {
       group.current.position.y =
-        baseY + Math.sin(clock.elapsedTime * 2.2 + index * 1.3) * 0.025;
-      group.current.rotation.y += delta * 0.5;
+        baseY + Math.sin(clock.elapsedTime * 2.2 + index * 1.3) * 0.018;
+      group.current.rotation.y += delta * 0.25;
     } else {
       group.current.position.y = baseY;
+      group.current.rotation.y = index * GOLDEN_ANGLE;
     }
   });
 
   return (
-    <group ref={group} position={[x, baseY, z]} scale={0}>
-      <mesh rotation-y={index * GOLDEN_ANGLE}>
-        <boxGeometry args={[0.16, height, 0.16]} />
-        <meshStandardMaterial color="#b9bec7" roughness={0.7} />
-      </mesh>
+    <group
+      ref={group}
+      position={[x, baseY, z]}
+      rotation-y={index * GOLDEN_ANGLE}
+      scale={0.0001}
+    >
+      <primitive object={clone} />
+      {/* the pond prop is a waterlily — give it water to float on */}
+      {prop === "pond" && (
+        <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
+          <circleGeometry args={[0.16, 24]} />
+          <meshStandardMaterial color="#3f6fa8" roughness={0.25} />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -165,9 +173,16 @@ export function Diorama() {
   return (
     <>
       <Flights />
+      {/* meadow ground — the label's base terrain, there from beat 0.
+          Sits just above the label cylinder's top face (DISC_TOP + 0.009). */}
+      <mesh rotation-x={-Math.PI / 2} position-y={DISC_TOP + 0.012}>
+        <circleGeometry args={[GRASS_RADIUS, 48]} />
+        <meshStandardMaterial color="#6d9c52" roughness={0.9} />
+      </mesh>
       {collected.map((prop) => (
-        <PieceBox
+        <PlantedProp
           key={prop}
+          prop={prop}
           index={props.indexOf(prop)}
           count={props.length}
           alive={alive}
