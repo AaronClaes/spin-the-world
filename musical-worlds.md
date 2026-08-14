@@ -36,7 +36,7 @@ Design implication: Polish and Art are worth 20 of the 50 points and are the cat
 
 ## 3. Core loop
 
-1. Pick a record from the studio wall. Needle drops.
+1. Pick a record from the studio wall. The camera dives to the turntable and a ready card floats over the parked disc — score to beat, how-to, and the "drop the needle" button. Starting from the card drops the needle.
 2. Character runs in place at a fixed point on the disc. **The disc rotates beneath them — the character never travels forward.**
 3. Player input: move between three lanes (radially in/out).
 4. Notes and world pieces sweep toward the player on the beat. Catch them by being in the right lane at the right moment.
@@ -347,7 +347,7 @@ Tune all of it by hand with leva, then hardcode the numbers. Verify framing in l
 - **Score:** notes are 10 × combo (consecutive catches; a note miss resets combo), world pieces are 100 flat. Max score is computable from the chart at load.
 - **Stars:** 1–3 stars from `starThresholds` as fractions of max score, shown on the results screen with the (partial or alive) world.
 - **Persistence:** `localStorage`, per record: high score, stars, completed flag. No backend.
-- **The studio wall is the title screen.** Records hang framed on a wall like plaques in a music studio. Uncompleted records are sleeves; a completed record hangs gold with its tiny world alive on the label and its stars beneath it. Clicking one drops the needle — that click is also the user gesture that unlocks the AudioContext. This replaces any menu: the wall is the meta-game, the progression display, and the title screen in one shot, and it restates the theme (a wall of tiny worlds) before the game even starts.
+- **The studio wall is the title screen.** Records hang framed on a wall like plaques in a music studio. Uncompleted records are sleeves; a completed record hangs gold with its tiny world alive on the label and its stars beneath it. Clicking one flies the camera down to the turntable and opens the ready card (record title, score to beat, controls); its start button drops the needle — that click is the user gesture that unlocks the AudioContext. This replaces any menu: the wall is the meta-game, the progression display, and the title screen in one shot, and it restates the theme (a wall of tiny worlds) before the game even starts.
 
 ### 8.8 Pause
 

@@ -381,6 +381,68 @@ canvas {
   pointer-events: auto;
 }
 
+/* ------------------------------------------------- the ready card ------- */
+/* The breath before the needle drops: the camera has already dived to the
+   turntable and the disc sits parked behind this translucent card. */
+
+.overlay.ready {
+  background: rgba(10, 12, 20, 0.45);
+}
+
+.overlay.ready h1 {
+  color: #ffe9b8;
+}
+
+.overlay.ready .verdict strong {
+  color: #ffd27a;
+  font-weight: 800;
+}
+
+.howto {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 10px 0 6px;
+  max-width: 460px;
+  padding: 0 16px;
+}
+
+.howto li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.howto-glyph {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 210, 122, 0.14);
+  color: #ffd27a;
+  font-size: 1.15rem;
+}
+
+/* show the lane-switch line that matches the input device */
+.howto .touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .howto .keys {
+    display: none;
+  }
+
+  .howto .touch {
+    display: flex;
+  }
+}
+
 /* ------------------------------------------------------ shipping HUD ---- */
 
 /* the HUD floats over daylight sky — dark ink, soft light halo */
@@ -767,6 +829,17 @@ canvas {
 
   .score-bar {
     margin: 6px auto 4px;
+  }
+
+  .howto {
+    gap: 7px;
+    font-size: 0.85rem;
+  }
+
+  .howto-glyph {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
   }
 }
 

@@ -233,9 +233,11 @@ const MAX_DPR =
 
 export function Scene({
   wall,
+  wallMounted,
   onStart,
 }: {
-  wall: boolean;
+  wall: boolean; // wall look (post stack) — true only on the title screen
+  wallMounted: boolean; // wall geometry in the tree — also true mid-dive
   onStart: () => void;
 }) {
   return (
@@ -255,7 +257,7 @@ export function Scene({
       <Suspense fallback={null}>
         <Disc />
         <Runner />
-        {wall && <WallScene onStart={onStart} />}
+        {wallMounted && <WallScene onStart={onStart} />}
       </Suspense>
 
       {/* subtle post stack (spec §9): bloom for the emissive accents, ACES

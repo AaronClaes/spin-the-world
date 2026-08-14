@@ -20,6 +20,7 @@ import { Scene } from "./scene/Scene";
 import { DebugHud } from "./ui/DebugHud";
 import { Hud } from "./ui/Hud";
 import { PauseOverlay } from "./ui/PauseOverlay";
+import { ReadyOverlay } from "./ui/ReadyOverlay";
 import type { RunSummary } from "./ui/ResultsOverlay";
 import { ResultsOverlay } from "./ui/ResultsOverlay";
 import { StudioWall } from "./ui/StudioWall";
@@ -30,7 +31,7 @@ const NEEDLE_LIFT_MS = 1800; // let the tonearm lift before the results show
 const SHOW_DEBUG_HUD =
   typeof location !== "undefined" && location.search.includes("debug");
 
-type Phase = "wall" | "playing" | "results";
+type Phase = "wall" | "ready" | "playing" | "results";
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("wall");
@@ -78,11 +79,19 @@ export default function App() {
     );
   };
 
+  // Picking a record off the wall dives the camera to the turntable but
+  // doesn't drop the needle yet — the ready card (score to beat, how-to)
+  // floats over the parked disc until the player starts.
+  const enterReady = useCallback(() => {
+    clockState.wall = false;
+    setPhase("ready");
+  }, []);
+
   const start = async () => {
     setPhase("playing");
     setPaused(false);
     clockState.paused = false;
-    clockState.wall = false; // camera dives from the wall onto the record
+    clockState.wall = false; // no-op from ready; the replay path needs it
     // Fresh run state — a no-op on the first play, the actual reset on replay.
     resetActiveRun();
     clearFlights();
@@ -156,7 +165,13 @@ export default function App() {
 
   return (
     <>
-      <Scene wall={phase === "wall"} onStart={start} />
+      <Scene
+        wall={phase === "wall"}
+        // stays mounted through "ready" so the dive pulls away from a real
+        // wall instead of a void
+        wallMounted={phase === "wall" || phase === "ready"}
+        onStart={enterReady}
+      />
       {/* CSS shows this only on portrait touch devices (spec §9: landscape) */}
       <div className="rotate-hint">
         <p>
@@ -172,6 +187,9 @@ export default function App() {
         </>
       )}
       {phase === "wall" && <StudioWall />}
+      {phase === "ready" && (
+        <ReadyOverlay onStart={start} onBack={backToWall} />
+      )}
       {phase === "playing" && paused && (
         <PauseOverlay onResume={resume} onRestart={start} onWall={backToWall} />
       )}
