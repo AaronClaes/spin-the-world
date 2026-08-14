@@ -168,11 +168,12 @@ export function NeedleNotes() {
       // sliver of stem; the per-seed tilt keeps them jaunty
       g.quaternion.copy(camera.quaternion);
       g.rotateZ(-0.1 + jitter(slot.seed, 2) * 0.4);
-      // pop in, drift, fade out
+      // born small at the stylus, growing all the way out — the classic
+      // music-note-particle read: size ∝ distance from the source
       const t = slot.age / LIFE;
-      const popIn = Math.min(1, slot.age / 0.12);
-      g.scale.setScalar(popIn * (1 + 0.12 * t));
-      materials[i].opacity = popIn * (t > 0.72 ? 1 - (t - 0.72) / 0.28 : 1);
+      const fadeIn = Math.min(1, slot.age / 0.12);
+      g.scale.setScalar(0.25 + 1.05 * t);
+      materials[i].opacity = fadeIn * (t > 0.72 ? 1 - (t - 0.72) / 0.28 : 1);
     }
   });
 
