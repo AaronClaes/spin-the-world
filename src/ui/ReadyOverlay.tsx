@@ -38,27 +38,12 @@ export function ReadyOverlay({ onStart, onBack }: Props) {
       </p>
 
       <ul className="howto pop-in d2">
-        <li>
-          <span className="howto-glyph">♪</span>
-          <span>
-            run the spinning groove and catch the notes as they reach you —
-            misses break your combo
-          </span>
-        </li>
-        <li className="keys">
-          <span className="howto-glyph">⇄</span>
-          <span>← → or A / D switch lanes · Esc pauses</span>
-        </li>
+        <li>collect notes and combos to increase your score</li>
+        <li className="keys">← → or A / D switch lanes · Esc pauses</li>
         <li className="touch">
-          <span className="howto-glyph">⇄</span>
-          <span>tap the left / right half of the screen to switch lanes</span>
+          tap the left / right half of the screen to switch lanes
         </li>
-        <li>
-          <span className="howto-glyph">★</span>
-          <span>
-            catch all {pieces} glowing pieces to bring the tiny world alive
-          </span>
-        </li>
+        <li>catch all {pieces} glowing pieces to bring the tiny world alive</li>
       </ul>
 
       <div className="menu pop-in d3">

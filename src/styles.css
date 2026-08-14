@@ -402,30 +402,12 @@ canvas {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin: 10px 0 6px;
   max-width: 460px;
   padding: 0 16px;
-}
-
-.howto li {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-align: left;
+  text-align: center;
   line-height: 1.35;
-}
-
-.howto-glyph {
-  flex: none;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(255, 210, 122, 0.14);
-  color: #ffd27a;
-  font-size: 1.15rem;
 }
 
 /* show the lane-switch line that matches the input device */
@@ -439,7 +421,7 @@ canvas {
   }
 
   .howto .touch {
-    display: flex;
+    display: block;
   }
 }
 
@@ -832,14 +814,8 @@ canvas {
   }
 
   .howto {
-    gap: 7px;
+    gap: 5px;
     font-size: 0.85rem;
-  }
-
-  .howto-glyph {
-    width: 28px;
-    height: 28px;
-    font-size: 0.9rem;
   }
 }
 
