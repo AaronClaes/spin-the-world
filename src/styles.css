@@ -72,7 +72,8 @@ canvas {
   opacity: 1;
 }
 
-.overlay button {
+/* the framed records opt out of the generic pill-button styling */
+.overlay button:not(.record) {
   margin-top: 8px;
   padding: 12px 28px;
   font-size: 1.05rem;
@@ -83,8 +84,384 @@ canvas {
   cursor: pointer;
 }
 
-.overlay button:hover {
+.overlay button:not(.record):hover {
   background: #e0a054;
+}
+
+.overlay .menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.overlay button.secondary {
+  background: transparent;
+  border: 1px solid rgba(232, 226, 213, 0.35);
+  color: #e8e2d5;
+  font-size: 0.95rem;
+  padding: 10px 24px;
+}
+
+.overlay button.secondary:hover {
+  background: rgba(232, 226, 213, 0.08);
+  border-color: rgba(232, 226, 213, 0.65);
+}
+
+/* ------------------------------------------------- the studio wall ------ */
+/* The title screen (spec §8.7): records hang framed like plaques in a
+   studio. Warm wood-and-lamplight against the game's cool void. */
+
+.overlay.wall {
+  background:
+    radial-gradient(ellipse at 50% 22%, rgba(88, 66, 42, 0.5), transparent 68%),
+    linear-gradient(#1a1410, #0c0a08);
+  gap: 26px;
+  overflow-y: auto;
+}
+
+.wall-head {
+  text-align: center;
+}
+
+.wall-head p {
+  margin-top: 6px;
+}
+
+.frames {
+  display: flex;
+  gap: 44px;
+  align-items: flex-start;
+}
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.frame.empty {
+  opacity: 0.45;
+}
+
+.record {
+  position: relative;
+  width: 186px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 12px solid #46331f;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #c9a878, #a2814f);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.6),
+    inset 0 0 36px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+button.record:hover,
+button.record:focus-visible {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.65),
+    inset 0 0 36px rgba(0, 0, 0, 0.28);
+}
+
+/* uncompleted: a kraft sleeve with a round cutout showing the vinyl */
+.record-disc {
+  position: absolute;
+  inset: 24%;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, #16181d 0 3px, #23262e 3px 4px);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.7);
+}
+
+.record-label {
+  position: absolute;
+  inset: 33%;
+  border-radius: 50%;
+  background: #c98a3d;
+}
+
+/* completed: the record hangs gold (spec §8.7) */
+.record.gold {
+  background: #221b14;
+}
+
+.record.gold .record-disc {
+  inset: 8%;
+  background: repeating-radial-gradient(circle, #8a6a25 0 3px, #d9b34a 3px 5px);
+  box-shadow: 0 0 30px rgba(255, 210, 122, 0.4);
+}
+
+.record.gold .record-label {
+  background: #ffd27a;
+}
+
+.record.vacant {
+  background: #17110d;
+  border-color: #33261a;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.65);
+  cursor: default;
+}
+
+.plaque {
+  text-align: center;
+  line-height: 1.5;
+}
+
+.plaque-title {
+  color: #d8c9a3;
+  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+}
+
+.plaque-title.dim {
+  opacity: 0.55;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.plaque-stars {
+  color: #ffd27a;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  font-size: 1.05rem;
+  text-shadow: 0 0 10px rgba(255, 210, 122, 0.35);
+}
+
+.plaque-stars .off {
+  opacity: 0.22;
+  text-shadow: none;
+}
+
+.plaque-score {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.wall-hint {
+  font-size: 0.85rem;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* show the hint that matches the input device */
+.wall-hint.touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .wall-hint.keys {
+    display: none;
+  }
+
+  .wall-hint.touch {
+    display: block;
+  }
+}
+
+.credits {
+  font-size: 0.78rem;
+  opacity: 0.55;
+  text-align: center;
+  line-height: 1.8;
+  max-width: 640px;
+  padding: 0 16px;
+}
+
+.credits a {
+  color: #ffd27a;
+}
+
+/* ------------------------------------------------------ shipping HUD ---- */
+
+.game-hud {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  color: #e8e2d5;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.game-hud .score {
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.game-hud .combo {
+  font-size: 0.95rem;
+  opacity: 0.75;
+  min-height: 1.3em;
+}
+
+.game-hud .combo.hot {
+  color: #ffd27a;
+  opacity: 1;
+}
+
+/* one dot per world piece — the only goal readout the HUD needs */
+.piece-dots {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.piece-dots .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 226, 213, 0.55);
+}
+
+.piece-dots .dot.got {
+  background: #ffd27a;
+  border-color: #ffd27a;
+  box-shadow: 0 0 8px rgba(255, 210, 122, 0.55);
+}
+
+.piece-dots .dot.lost {
+  border-color: rgba(210, 100, 90, 0.8);
+  background: rgba(210, 100, 90, 0.25);
+}
+
+.pause-button {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(232, 226, 213, 0.3);
+  border-radius: 50%;
+  background: rgba(10, 12, 20, 0.55);
+  color: #e8e2d5;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.pause-button:hover {
+  background: rgba(232, 226, 213, 0.12);
+}
+
+/* ----------------------------------------------------- touch controls --- */
+
+.touch-zones {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  z-index: 2;
+}
+
+.touch-zones .zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: transparent; /* chevrons only show on touch devices below */
+  font-size: 2.6rem;
+  font-family: system-ui, sans-serif;
+  padding: 0 20px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.touch-zones .zone.left {
+  justify-content: flex-start;
+}
+
+.touch-zones .zone.right {
+  justify-content: flex-end;
+}
+
+@media (hover: none) {
+  .touch-zones .zone {
+    color: rgba(232, 226, 213, 0.16);
+  }
+}
+
+/* HUD must sit above the touch zones */
+.pause-button {
+  z-index: 3;
+}
+
+/* --------------------------------------------- portrait phone rotate ---- */
+
+.rotate-hint {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-hint {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: #0a0c14;
+    color: #e8e2d5;
+    font-family: system-ui, sans-serif;
+    font-size: 1.1rem;
+    line-height: 1.8;
+  }
+}
+
+/* -------------------------------------------- small / landscape phones -- */
+
+@media (max-height: 500px) {
+  .overlay.wall {
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .overlay h1 {
+    font-size: 1.5rem;
+  }
+
+  .record {
+    width: 108px;
+    border-width: 8px;
+  }
+
+  .frames {
+    gap: 24px;
+  }
+
+  .wall-hint {
+    display: none;
+  }
+
+  .credits {
+    font-size: 0.68rem;
+    line-height: 1.5;
+  }
+
+  .game-hud .score {
+    font-size: 1.25rem;
+  }
+
+  .overlay .stars {
+    font-size: 1.8rem;
+  }
+
+  .overlay .stats {
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
 }
 
 .hud {

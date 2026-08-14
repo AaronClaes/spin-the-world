@@ -15,12 +15,13 @@ export interface RunSummary {
 interface Props {
   summary: RunSummary;
   onReplay: () => void;
+  onWall: () => void;
 }
 
 // Shown after the needle lifts. Deliberately translucent — the (alive or
 // partial) world keeps spinning behind it, because the diorama is the
 // result (spec §8.7).
-export function ResultsOverlay({ summary, onReplay }: Props) {
+export function ResultsOverlay({ summary, onReplay, onWall }: Props) {
   return (
     <div className="overlay results">
       <h1>
@@ -51,7 +52,12 @@ export function ResultsOverlay({ summary, onReplay }: Props) {
           <div>best {summary.highScore.toLocaleString()}</div>
         )}
       </div>
-      <button onClick={onReplay}>Spin it again</button>
+      <div className="menu">
+        <button onClick={onReplay}>Spin it again</button>
+        <button className="secondary" onClick={onWall}>
+          Back to the wall
+        </button>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ const MASTER_DB = -2;
 const ALIVE_SWELL_DB = 0; // master ramps here when the world comes alive
 
 let master: Tone.Channel | null = null;
+let masterTarget = MASTER_DB; // where the duck recovers to (alive swell moves it)
 let stems: Tone.Channel[] = [];
 let scheduled = false;
 
@@ -27,6 +28,18 @@ const PROGRESSION: (keyof typeof CHORDS)[] = ["G", "Em", "C", "D"];
 
 type NoteEvent = { time: string; note: string; dur: string; vel?: number };
 type ChordEvent = { time: string; notes: string[]; dur: string; vel: number };
+
+// After a long main-thread stall the Transport catches up by firing the
+// missed events in one burst with clamped times — a mono synth started twice
+// at the same clamped time throws. Dropping that hit is inaudible; letting
+// the throw escape a clock callback is not.
+const safeHit = (fn: () => void) => {
+  try {
+    fn();
+  } catch {
+    // catch-up burst after a stall — skip this hit
+  }
+};
 
 // ---------------------------------------------------------------- drums ----
 
@@ -60,7 +73,7 @@ function scheduleDrums(out: Tone.Channel) {
   const seq = (pattern: string, hit: (time: number) => void) =>
     new Tone.Sequence(
       (time, step) => {
-        if (step === "x") hit(time);
+        if (step === "x") safeHit(() => hit(time));
       },
       [...pattern],
       "8n",
@@ -112,7 +125,7 @@ function scheduleBass(out: Tone.Channel) {
 
   const part = new Tone.Part(
     (time, e: { time: string; note: string }) =>
-      bass.triggerAttackRelease(e.note, "8n", time, 0.9),
+      safeHit(() => bass.triggerAttackRelease(e.note, "8n", time, 0.9)),
     line,
   );
   part.loop = true;
@@ -151,7 +164,7 @@ function scheduleKeys(out: Tone.Channel) {
 
   const part = new Tone.Part(
     (time, e: ChordEvent) =>
-      keys.triggerAttackRelease(e.notes, e.dur, time, e.vel),
+      safeHit(() => keys.triggerAttackRelease(e.notes, e.dur, time, e.vel)),
     events,
   );
   part.loop = true;
@@ -226,7 +239,9 @@ function scheduleLead(out: Tone.Channel) {
 
   const part = new Tone.Part(
     (time, e: NoteEvent) =>
-      lead.triggerAttackRelease(e.note, e.dur, time, e.vel ?? 0.9),
+      safeHit(() =>
+        lead.triggerAttackRelease(e.note, e.dur, time, e.vel ?? 0.9),
+      ),
     LEAD_PHRASE,
   );
   part.loop = true;
@@ -288,9 +303,25 @@ export function stemVolumes(): number[] {
 
 // Full completion: the mix swells with the world (spec §8.4).
 export function swellAliveMix() {
+  masterTarget = ALIVE_SWELL_DB;
   master?.volume.rampTo(ALIVE_SWELL_DB, 1.5);
 }
 
 export function resetAliveMix() {
+  masterTarget = MASTER_DB;
   if (master) master.volume.value = MASTER_DB;
+}
+
+// Record-skip (spec §8.1): the music itself drops out for a beat, like the
+// needle actually left the groove, then recovers.
+export function duckForSkip() {
+  if (!master) return;
+  try {
+    const now = Tone.now();
+    master.volume.cancelScheduledValues(now);
+    master.volume.rampTo(masterTarget - 10, 0.03, now);
+    master.volume.rampTo(masterTarget, 0.3, now + 0.16);
+  } catch {
+    // scheduling edge case (e.g. two skips in one frame) — skip the duck
+  }
 }

@@ -109,8 +109,12 @@ export function Runner() {
 
     if (running && actions.Running_A) {
       // Feet must match the vinyl passing underneath: ω·r over stride speed.
+      // Paused, the clip freezes mid-stride (spec §8.8) — the disc is frozen
+      // too, so switching to Idle would read as the runner giving up.
       const omega = RAD_PER_BEAT * (meadow.bpm / 60); // rad/s
-      actions.Running_A.timeScale = (omega * radius) / STRIDE_SPEED;
+      actions.Running_A.timeScale = clockState.paused
+        ? 0
+        : (omega * radius) / STRIDE_SPEED;
     }
   });
 

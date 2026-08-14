@@ -8,6 +8,12 @@ import {
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useMemo, useRef } from "react";
 import type { AmbientLight, DirectionalLight, Points } from "three";
+import {
+  sfxNoteMiss,
+  sfxNotePickup,
+  sfxPiecePickup,
+  sfxRecordSkip,
+} from "../audio/sfx";
 import { getBeatPos } from "../audio/transport";
 import { clockState } from "../game/clockState";
 import type { ResolveEvent } from "../game/run";
@@ -42,19 +48,29 @@ function ClockDriver() {
     for (const e of events) {
       const store = useGameStore.getState();
       if (e.item.kind === "note") {
-        if (e.collected) store.collectNote();
-        else store.missNote();
+        if (e.collected) {
+          store.collectNote();
+          sfxNotePickup(useGameStore.getState().combo);
+        } else {
+          store.missNote();
+          sfxNoteMiss();
+        }
       } else if (e.collected) {
         store.collectPiece(e.item.prop as string);
+        sfxPiecePickup();
         launchFlight(e.item);
         const count = useGameStore.getState().piecesCollected.length;
         applyStemUnlocks(count, activeRun.record.stemUnlockAtPieces);
         if (count === activeRun.record.worldPieces.length) swellAliveMix();
-      } else if (e.item.status === "lost") {
-        store.losePiece();
+      } else {
+        // piece missed — recurring or lost, both get the record-skip glitch
+        // and the one allowed camera impulse (spec §8.1, §8.6)
+        sfxRecordSkip();
+        clockState.skipImpulse = 1;
+        if (e.item.status === "lost") store.losePiece();
+        // a recurring piece (still pending) needs no store change — its beat
+        // moved one revolution ahead and it will come around again
       }
-      // a recurring piece (still pending) needs no store change — its beat
-      // moved one revolution ahead and it will come around again
     }
   });
   return null;
@@ -143,9 +159,16 @@ function DustMotes() {
   );
 }
 
+// Touch devices get a lower DPR cap — post passes scale with pixels, and the
+// budget says playable on a mid-range phone, not pretty on one (spec §9).
+const MAX_DPR =
+  typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches
+    ? 1.5
+    : 2;
+
 export function Scene() {
   return (
-    <Canvas dpr={[1, 2]} camera={{ position: [-3.9, 3.1, 6.6], fov: 42 }}>
+    <Canvas dpr={[1, MAX_DPR]} camera={{ position: [-3.9, 3.1, 6.6], fov: 42 }}>
       <color attach="background" args={["#0a0c14"]} />
 
       <ClockDriver />

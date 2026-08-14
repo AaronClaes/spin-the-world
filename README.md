@@ -8,6 +8,14 @@ tiny world, and you play it into existence by running the groove.
 
 Build spec: [musical-worlds.md](musical-worlds.md)
 
+## How to play
+
+Click a record on the studio wall to drop the needle. **← → (or A/D)** switch
+grooves — on touch, tap the left/right half of the screen. Catch the notes for
+score and combo; catch the world pieces to build the tiny world on the label.
+Missed pieces come back around next revolution, but the needle is spiralling
+inward and the track is finite. **Esc** (or the ⏸ button) pauses.
+
 ## Development
 
 ```bash
@@ -16,6 +24,13 @@ npm run dev    # dev server
 npm test       # unit tests (geometry + clock)
 npm run build  # production build
 ```
+
+Append `?debug` to the URL for the sync/drift debug HUD.
+
+## Ship
+
+`npm run build` emits a fully static site in `dist/` (~2.6MB total) — deploy
+as-is to Vercel or Netlify, no server or config needed.
 
 ## Credits
 

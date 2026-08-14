@@ -20,7 +20,7 @@ const lookTarget = new Vector3();
 export function CameraRig() {
   const look = useRef(new Vector3(2.0, 0.1, 3.2));
 
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, clock }, delta) => {
     const progress = songProgress(clockState.beatPos, meadow.totalBeats);
     const center = bandCenter(
       progress,
@@ -37,6 +37,15 @@ export function CameraRig() {
     camera.position.lerp(camTarget, k);
     look.current.lerp(lookTarget, k);
     camera.lookAt(look.current);
+
+    // The one allowed shake (spec §8.6): a small impulse on a record-skip.
+    if (clockState.skipImpulse > 0.001) {
+      camera.position.y +=
+        Math.sin(clock.elapsedTime * 55) * 0.045 * clockState.skipImpulse;
+      clockState.skipImpulse *= Math.exp(-7 * delta);
+    } else {
+      clockState.skipImpulse = 0;
+    }
   });
 
   return null;

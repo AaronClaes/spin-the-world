@@ -8,7 +8,7 @@ import { useGameStore } from "./store";
 export function useLaneInput(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!clockState.playing || clockState.ended) return;
+      if (!clockState.playing || clockState.ended || clockState.paused) return;
       if (e.repeat) return;
 
       const key = e.key.toLowerCase();
