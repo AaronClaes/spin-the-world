@@ -117,8 +117,11 @@ export function Disc() {
         <cylinderGeometry args={[LABEL_RADIUS, LABEL_RADIUS, 0.012, 64]} />
         <meshStandardMaterial color="#c98a3d" roughness={0.7} />
       </mesh>
-      {/* off-centre print ring on the label — asymmetry that shows spin */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05, DISC_TOP + 0.011, 0.03]}>
+      {/* print ring on the label rim. Once authored off-centre as a spin cue,
+          but with the grass plate covering the label it read as a misaligned
+          part — the world's own props carry the spin read now, so it sits
+          concentric like a proper pressing */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, DISC_TOP + 0.011, 0]}>
         <ringGeometry args={[LABEL_RADIUS - 0.1, LABEL_RADIUS - 0.06, 64]} />
         <meshStandardMaterial color="#8a5a22" roughness={0.75} />
       </mesh>
