@@ -214,10 +214,14 @@ canvas {
 /* ------------------------------------------------------ shipping HUD ---- */
 
 /* the HUD floats over daylight sky — dark ink, soft light halo */
+/* score + combo live top-centre under the piece dots — one eye-line with
+   the runner below, no glancing to a corner mid-run */
 .game-hud {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
   color: #2c3140;
   font-family: system-ui, sans-serif;
   pointer-events: none;
@@ -235,6 +239,7 @@ canvas {
 
 .score-slot {
   position: relative;
+  display: inline-block;
 }
 
 .game-hud .score {
@@ -242,7 +247,7 @@ canvas {
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.1;
-  transform-origin: left center;
+  transform-origin: center;
   animation: score-bump 0.3s ease-out;
 }
 
@@ -290,7 +295,7 @@ canvas {
 }
 
 .combo-live {
-  transform-origin: left center; /* rAF beat pulse lands here */
+  transform-origin: center; /* rAF beat pulse lands here */
 }
 
 .combo-chip {
@@ -298,7 +303,7 @@ canvas {
   font-weight: 800;
   color: #4a5064;
   line-height: 1.15;
-  transform-origin: left center;
+  transform-origin: center;
   animation: combo-punch 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -360,26 +365,27 @@ canvas {
 /* the chain broke: the counter tips over and tumbles off the screen */
 .combo-dead {
   position: absolute;
-  left: 0;
+  left: 50%;
   top: 0;
   font-size: 1.6rem;
   font-weight: 800;
   color: #4a5064;
   pointer-events: none;
+  white-space: nowrap;
   animation: combo-death 0.9s ease-in forwards;
 }
 
 @keyframes combo-death {
   0% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: translate(-50%, 0) rotate(0deg);
     opacity: 1;
   }
   22% {
-    transform: translate(12px, -18px) rotate(20deg);
+    transform: translate(calc(-50% + 12px), -18px) rotate(20deg);
     opacity: 1;
   }
   100% {
-    transform: translate(120px, 65vh) rotate(160deg);
+    transform: translate(calc(-50% + 120px), 65vh) rotate(160deg);
     opacity: 0.7;
   }
 }
