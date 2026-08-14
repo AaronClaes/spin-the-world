@@ -7,7 +7,7 @@ import {
   computeMaxScore,
   noteScoreAt,
   PIECE_SCORE,
-  starsForScore,
+  starsForRun,
 } from "./score";
 
 const tiny: RecordDef = {
@@ -44,19 +44,26 @@ describe("computeMaxScore", () => {
   });
 });
 
-describe("starsForScore", () => {
-  const thresholds = [0.5, 0.75, 0.9] as const;
+describe("starsForRun", () => {
+  const thresholds = [0.6, 1] as const;
 
-  it("awards 0–3 stars at the documented fractions", () => {
-    expect(starsForScore(0, 1000, thresholds)).toBe(0);
-    expect(starsForScore(499, 1000, thresholds)).toBe(0);
-    expect(starsForScore(500, 1000, thresholds)).toBe(1);
-    expect(starsForScore(750, 1000, thresholds)).toBe(2);
-    expect(starsForScore(900, 1000, thresholds)).toBe(3);
-    expect(starsForScore(1000, 1000, thresholds)).toBe(3);
+  it("an incomplete world is a failed run — no stars at any score", () => {
+    expect(starsForRun(false, 0, 1000, thresholds)).toBe(0);
+    expect(starsForRun(false, 1000, 1000, thresholds)).toBe(0);
+  });
+
+  it("completing the world IS the first star", () => {
+    expect(starsForRun(true, 0, 1000, thresholds)).toBe(1);
+    expect(starsForRun(true, 599, 1000, thresholds)).toBe(1);
+  });
+
+  it("score fractions earn the second and third", () => {
+    expect(starsForRun(true, 600, 1000, thresholds)).toBe(2);
+    expect(starsForRun(true, 999, 1000, thresholds)).toBe(2);
+    expect(starsForRun(true, 1000, 1000, thresholds)).toBe(3);
   });
 
   it("handles a zero max score without dividing by zero", () => {
-    expect(starsForScore(0, 0, thresholds)).toBe(0);
+    expect(starsForRun(true, 0, 0, thresholds)).toBe(1);
   });
 });

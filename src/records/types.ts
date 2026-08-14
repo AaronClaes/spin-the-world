@@ -25,7 +25,8 @@ export interface RecordDef {
 
   stems: [string, string, string, string]; // channel names, in unlock order
   stemUnlockAtPieces: [number, number, number, number]; // stem 0 must be 0
-  starThresholds: [number, number, number]; // fractions of the chart's max score
+  starThresholds: [number, number]; // score fractions for the 2nd and 3rd
+  // star — the 1st star is collecting every world piece (game/score.ts)
 
   worldPieces: WorldPieceDef[];
   notePatterns: NotePattern[];

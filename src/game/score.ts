@@ -23,14 +23,18 @@ export function computeMaxScore(record: RecordDef): number {
   return notes + record.worldPieces.length * PIECE_SCORE;
 }
 
-// 0–3 stars from starThresholds as fractions of max score.
-export function starsForScore(
+// 0–3 stars. Completion gates everything: a run that didn't build the whole
+// world is a failed run, no matter the score. Finishing the world IS the
+// first star; score fractions (starThresholds) earn the other two.
+export function starsForRun(
+  completed: boolean,
   score: number,
   maxScore: number,
-  thresholds: readonly [number, number, number],
+  thresholds: readonly [number, number],
 ): number {
+  if (!completed) return 0;
   const frac = maxScore > 0 ? score / maxScore : 0;
-  let stars = 0;
+  let stars = 1;
   for (const t of thresholds) if (frac >= t) stars++;
   return stars;
 }

@@ -8,7 +8,7 @@ import {
 import { clockState } from "./game/clockState";
 import { saveRunResult } from "./game/persistence";
 import { resetActiveRun } from "./game/runState";
-import { computeMaxScore, starsForScore } from "./game/score";
+import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
 import { useLaneInput } from "./game/useLaneInput";
 import { applyStemUnlocks, resetAliveMix } from "./music/meadow";
@@ -47,7 +47,12 @@ export default function App() {
     const s = useGameStore.getState();
     const piecesTotal = meadow.worldPieces.length;
     const completed = s.piecesCollected.length === piecesTotal;
-    const stars = starsForScore(s.score, MAX_SCORE, meadow.starThresholds);
+    const stars = starsForRun(
+      completed,
+      s.score,
+      MAX_SCORE,
+      meadow.starThresholds,
+    );
     const { progress, newHighScore } = saveRunResult(meadow.id, {
       score: s.score,
       stars,
@@ -65,6 +70,7 @@ export default function App() {
       piecesTotal,
       newHighScore,
       highScore: progress.highScore,
+      starThresholds: meadow.starThresholds,
     });
     resultsTimer.current = window.setTimeout(
       () => setPhase("results"),

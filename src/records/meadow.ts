@@ -22,7 +22,9 @@ export const meadow: RecordDef = {
 
   stems: ["drums", "bass", "keys", "lead"],
   stemUnlockAtPieces: [0, 2, 5, 8],
-  starThresholds: [0.5, 0.75, 0.9],
+  // 2nd star at 60% of max score, 3rd at a perfect 100% — the 1st star is
+  // completing the world
+  starThresholds: [0.6, 1],
 
   worldPieces: [
     { id: "wp01", beat: 15, lane: 1, prop: "mill" },
