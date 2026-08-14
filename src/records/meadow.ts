@@ -16,7 +16,9 @@ export const meadow: RecordDef = {
   genre: "folk",
   bpm: 120,
   totalBeats: 176, // 44 bars, 22 revolutions, 88s at 120bpm
-  band: { startRadius: 4.5, endRadius: 2.0, laneGap: 0.45 },
+  // laneGap widened from 0.45 for readability (spec risk table); startRadius
+  // pulled in so the outer lane starts at 4.95, inside the disc rim (5.0).
+  band: { startRadius: 4.4, endRadius: 2.0, laneGap: 0.55 },
 
   stems: ["drums", "bass", "keys", "lead"],
   stemUnlockAtPieces: [0, 2, 5, 8],

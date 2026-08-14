@@ -13,7 +13,7 @@ import { WALL_CAM_POS, WALL_LOOK_AT } from "./WallScene";
 // Base placement: behind the runner along the running direction (+X), up and
 // back, biased toward the disc centre so the label diorama stays in frame.
 
-const LEAN_FRACTION = 0.18;
+const LEAN_FRACTION = 0.22;
 
 const camTarget = new Vector3();
 const lookTarget = new Vector3();
