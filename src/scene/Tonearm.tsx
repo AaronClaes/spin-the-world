@@ -148,12 +148,16 @@ export function Tonearm() {
                 <boxGeometry args={[0.2, 0.14, 0.44]} />
                 <meshStandardMaterial color={ORANGE} roughness={0.45} />
               </mesh>
-              <mesh position={[0, -0.13, 0.16]}>
+              <mesh position={[0, -0.14, 0.16]}>
                 <boxGeometry args={[0.15, 0.09, 0.3]} />
                 <meshStandardMaterial color={CHARCOAL} roughness={0.5} />
               </mesh>
-              <mesh position={[0, -0.26, 0.24]} rotation-x={Math.PI}>
-                <coneGeometry args={[0.035, 0.2, 8]} />
+              {/* placed so the TIP lands exactly on the aim point (head
+                  origin z=0) at vinyl height once the 0.3 rad shell tilt is
+                  applied — the head group origin is what the arm math drives,
+                  and the glint/notes spawn there */}
+              <mesh position={[0, -0.32, 0.145]} rotation-x={Math.PI}>
+                <coneGeometry args={[0.035, 0.28, 8]} />
                 <meshStandardMaterial color="#dde1e8" roughness={0.3} />
               </mesh>
               {/* finger lift */}
