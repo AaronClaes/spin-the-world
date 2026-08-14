@@ -10,7 +10,7 @@ import { DECK_TOP } from "./Turntable";
 // The tonearm rides the band (spec §8.3): the stylus sits at world angle
 // NEEDLE_LEAD_BEATS ahead of the player, at the band centre evaluated at
 // beatPos + lead — it reads the groove the player is about to run. On track
-// end it lifts and swings home over the arm rest on the deck.
+// end it lifts and swings out past the rim, staying raised until a restart.
 //
 // The needle point travels the +X axis from startRadius to endRadius (world
 // angle 90° = +X). The pivot sits on the perpendicular bisector of that
@@ -26,7 +26,7 @@ import { DECK_TOP } from "./Turntable";
 const PIVOT_X = 3.25;
 const PIVOT_Z = -5.8;
 const ARM_Y = 0.55; // arm-tube height above the vinyl plane
-const REST_RADIUS = 5.85; // the arm rest's position on the deck
+const REST_RADIUS = 5.85; // where the arm swings to after the lift
 const LIFT_TILT = 0.14; // radians about the pivot's horizontal axis
 
 const NEEDLE_ANGLE = NEEDLE_LEAD_BEATS * RAD_PER_BEAT; // 90°
@@ -68,10 +68,7 @@ export function Tonearm() {
     const dz = Math.cos(NEEDLE_ANGLE) * needleR - PIVOT_Z;
     const dist = Math.hypot(dx, dz);
     yawGroup.current.rotation.y = Math.atan2(dx, dz);
-    // two-phase return: up over the vinyl mid-swing, back down onto the
-    // arm rest at the end (and the reverse when a restart swings it back)
-    tiltGroup.current.rotation.x =
-      -LIFT_TILT * Math.sin(Math.PI * lift.current);
+    tiltGroup.current.rotation.x = -LIFT_TILT * lift.current;
 
     // scale acts on the cylinder's LOCAL axes before its rotation-x — the
     // height axis is local Y, which the rotation then points along +Z

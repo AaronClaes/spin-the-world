@@ -108,39 +108,6 @@ function ControlCluster() {
           />
         </mesh>
       ))}
-      {/* pitch slider on the right of the front strip */}
-      <group position={[4.7, 0, 5.75]}>
-        <mesh position-y={0.012}>
-          <boxGeometry args={[0.14, 0.025, 1.25]} />
-          <meshStandardMaterial color={CHARCOAL} roughness={0.6} />
-        </mesh>
-        <mesh position={[0, 0.05, -0.18]}>
-          <boxGeometry args={[0.26, 0.08, 0.16]} />
-          <meshStandardMaterial color={ORANGE} roughness={0.45} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-// The rest the tonearm swings home to after the lift (Tonearm's REST_RADIUS
-// points the stylus here) — post plus two prongs, just off the platter rim.
-function ArmRest() {
-  return (
-    // just short of the stylus's REST_RADIUS so the settled arm tube nests
-    // in the prongs and the stylus hangs clear; yawed to match the arm's
-    // resting direction from the pivot
-    <group position={[5.7, 0, 0]} rotation-y={0.42}>
-      <mesh position-y={(DECK_TOP + 0.4) / 2}>
-        <cylinderGeometry args={[0.055, 0.075, 0.4 - DECK_TOP, 12]} />
-        <meshStandardMaterial color={CREAM} roughness={0.5} flatShading />
-      </mesh>
-      {[-0.085, 0.085].map((x) => (
-        <mesh key={x} position={[x, 0.46, 0]}>
-          <boxGeometry args={[0.03, 0.16, 0.09]} />
-          <meshStandardMaterial color={CHARCOAL} roughness={0.5} />
-        </mesh>
-      ))}
     </group>
   );
 }
@@ -185,7 +152,6 @@ export function Turntable() {
       </mesh>
 
       <ControlCluster />
-      <ArmRest />
     </group>
   );
 }

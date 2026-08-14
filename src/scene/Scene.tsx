@@ -31,6 +31,7 @@ import { applyStemUnlocks, swellAliveMix } from "../music/meadow";
 import { CameraRig } from "./CameraRig";
 import { Disc } from "./Disc";
 import { LaneGuides } from "./LaneGuides";
+import { NeedleNotes } from "./NeedleNotes";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
 import { Tonearm } from "./Tonearm";
@@ -243,6 +244,7 @@ export function Scene({
 
       <Turntable />
       <Tonearm />
+      <NeedleNotes />
       <LaneGuides />
       <Suspense fallback={null}>
         <Disc />
