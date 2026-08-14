@@ -38,12 +38,12 @@ export function ReadyOverlay({ onStart, onBack }: Props) {
       </p>
 
       <ul className="howto pop-in d2">
+        <li>catch all {pieces} glowing pieces to bring the tiny world alive</li>
         <li>collect notes and combos to increase your score</li>
         <li className="keys">← → or A / D switch lanes · Esc pauses</li>
         <li className="touch">
           tap the left / right half of the screen to switch lanes
         </li>
-        <li>catch all {pieces} glowing pieces to bring the tiny world alive</li>
       </ul>
 
       <div className="menu pop-in d3">

@@ -410,6 +410,17 @@ canvas {
   line-height: 1.35;
 }
 
+/* a small dot between the lines — works with the keys/touch swap because a
+   hidden line never renders its ::before */
+.howto li + li::before {
+  content: "•";
+  display: block;
+  margin-bottom: 8px;
+  color: #ffd27a;
+  font-size: 0.85rem;
+  text-shadow: 0 0 6px rgba(255, 210, 122, 0.5);
+}
+
 /* show the lane-switch line that matches the input device */
 .howto .touch {
   display: none;
