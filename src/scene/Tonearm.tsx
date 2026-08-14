@@ -5,24 +5,35 @@ import { clockState } from "../game/clockState";
 import { NEEDLE_LEAD_BEATS, RAD_PER_BEAT } from "../game/constants";
 import { bandCenter } from "../game/geometry";
 import { activeRun } from "../game/runState";
+import { DECK_TOP } from "./Turntable";
 
 // The tonearm rides the band (spec §8.3): the stylus sits at world angle
 // NEEDLE_LEAD_BEATS ahead of the player, at the band centre evaluated at
 // beatPos + lead — it reads the groove the player is about to run. On track
-// end it lifts and swings out past the rim.
+// end it lifts and swings home over the arm rest on the deck.
 //
 // The needle point travels the +X axis from startRadius to endRadius (world
 // angle 90° = +X). The pivot sits on the perpendicular bisector of that
 // sweep, so a fixed-length arm covers it with ~2% length error — absorbed by
 // stretching the tube, invisibly.
+//
+// Body construction rule: every joint is socketed — the tube's ends are
+// buried inside the bearing housing and the headshell collar, the
+// counterweight hangs on a rear stub that enters the housing, the turret
+// stands on the deck and the housing sits on the turret. Nothing floats,
+// nothing clips.
 
 const PIVOT_X = 3.25;
 const PIVOT_Z = -5.8;
-const ARM_Y = 0.55; // tube height above the table plane
-const REST_RADIUS = 5.5; // where the arm swings to after the lift
+const ARM_Y = 0.55; // arm-tube height above the vinyl plane
+const REST_RADIUS = 5.85; // the arm rest's position on the deck
 const LIFT_TILT = 0.14; // radians about the pivot's horizontal axis
 
 const NEEDLE_ANGLE = NEEDLE_LEAD_BEATS * RAD_PER_BEAT; // 90°
+
+const CREAM = "#ece1cb";
+const CHARCOAL = "#3b3f49";
+const ORANGE = "#e08a3c";
 
 export function Tonearm() {
   const yawGroup = useRef<Group>(null);
@@ -57,7 +68,10 @@ export function Tonearm() {
     const dz = Math.cos(NEEDLE_ANGLE) * needleR - PIVOT_Z;
     const dist = Math.hypot(dx, dz);
     yawGroup.current.rotation.y = Math.atan2(dx, dz);
-    tiltGroup.current.rotation.x = -LIFT_TILT * lift.current;
+    // two-phase return: up over the vinyl mid-swing, back down onto the
+    // arm rest at the end (and the reverse when a restart swings it back)
+    tiltGroup.current.rotation.x =
+      -LIFT_TILT * Math.sin(Math.PI * lift.current);
 
     // scale acts on the cylinder's LOCAL axes before its rotation-x — the
     // height axis is local Y, which the rotation then points along +Z
@@ -68,55 +82,89 @@ export function Tonearm() {
 
   return (
     <group position={[PIVOT_X, 0, PIVOT_Z]}>
-      {/* chunky toy-machine proportions in light metals: at gameplay
-          distance a realistic thin arm dissolves into disconnected blobs
-          against the daylight sky — cartoony thickness makes the pivot,
-          tube and headshell read as ONE machine */}
-      <mesh position-y={0.26}>
-        <cylinderGeometry args={[0.2, 0.26, 0.52, 24]} />
-        <meshStandardMaterial
-          color="#c3c9d4"
-          roughness={0.45}
-          metalness={0.3}
-        />
+      {/* turret: base plate on the deck, cream column, charcoal collar the
+          bearing housing rides on */}
+      <mesh position-y={DECK_TOP + 0.05}>
+        <cylinderGeometry args={[0.5, 0.56, 0.1, 20]} />
+        <meshStandardMaterial color={CHARCOAL} roughness={0.5} flatShading />
+      </mesh>
+      <mesh position-y={(DECK_TOP + 0.38) / 2 + 0.05}>
+        <cylinderGeometry args={[0.3, 0.34, 0.38 - DECK_TOP - 0.1, 20]} />
+        <meshStandardMaterial color={CREAM} roughness={0.5} flatShading />
+      </mesh>
+      <mesh position-y={0.36}>
+        <cylinderGeometry args={[0.34, 0.34, 0.08, 20]} />
+        <meshStandardMaterial color={CHARCOAL} roughness={0.5} flatShading />
       </mesh>
 
       <group ref={yawGroup} position-y={ARM_Y}>
         <group ref={tiltGroup}>
-          {/* counterweight behind the pivot */}
-          <mesh position-z={-0.46} rotation-x={Math.PI / 2}>
-            <cylinderGeometry args={[0.19, 0.19, 0.3, 20]} />
+          {/* bearing housing — sits on the turret collar, swallows the
+              tube's rear end and the counterweight stub */}
+          <mesh rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.17, 0.17, 0.55, 14]} />
             <meshStandardMaterial
-              color="#9aa1ad"
-              roughness={0.35}
-              metalness={0.5}
+              color={CHARCOAL}
+              roughness={0.5}
+              flatShading
             />
           </mesh>
 
-          {/* arm tube — unit length along +Z, stretched to the needle point */}
+          {/* counterweight on its rear stub */}
+          <mesh position-z={-0.5} rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.06, 0.06, 0.5, 12]} />
+            <meshStandardMaterial color={CREAM} roughness={0.45} flatShading />
+          </mesh>
+          <mesh position-z={-0.68} rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.24, 0.24, 0.36, 14]} />
+            <meshStandardMaterial
+              color={CHARCOAL}
+              roughness={0.5}
+              flatShading
+            />
+          </mesh>
+          <mesh position-z={-0.68} rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.255, 0.255, 0.08, 14]} />
+            <meshStandardMaterial color={ORANGE} roughness={0.45} flatShading />
+          </mesh>
+
+          {/* arm tube — unit length along +Z, stretched to the needle point;
+              tapers toward the headshell */}
           <mesh ref={tube} rotation-x={Math.PI / 2}>
-            <cylinderGeometry args={[0.09, 0.09, 1, 12]} />
-            <meshStandardMaterial
-              color="#d5dae2"
-              roughness={0.3}
-              metalness={0.5}
-            />
+            <cylinderGeometry args={[0.075, 0.105, 1, 14]} />
+            <meshStandardMaterial color={CREAM} roughness={0.45} flatShading />
           </mesh>
 
-          {/* headshell + stylus, dipping toward the vinyl */}
+          {/* headshell: collar swallows the tube tip, then the shell +
+              cartridge + stylus dip toward the vinyl as one angled unit */}
           <group ref={head}>
-            <mesh position-y={-0.09} rotation-x={0.35}>
-              <boxGeometry args={[0.17, 0.13, 0.42]} />
+            <mesh position-z={-0.09} rotation-x={Math.PI / 2}>
+              <cylinderGeometry args={[0.12, 0.12, 0.22, 14]} />
               <meshStandardMaterial
-                color="#c9873d"
-                roughness={0.4}
-                metalness={0.4}
+                color={CHARCOAL}
+                roughness={0.5}
+                flatShading
               />
             </mesh>
-            <mesh position-y={-0.3} rotation-x={Math.PI}>
-              <coneGeometry args={[0.04, 0.26, 8]} />
-              <meshStandardMaterial color="#dde1e8" roughness={0.3} />
-            </mesh>
+            <group rotation-x={0.3}>
+              <mesh position={[0, -0.02, 0.16]}>
+                <boxGeometry args={[0.2, 0.14, 0.44]} />
+                <meshStandardMaterial color={ORANGE} roughness={0.45} />
+              </mesh>
+              <mesh position={[0, -0.13, 0.16]}>
+                <boxGeometry args={[0.15, 0.09, 0.3]} />
+                <meshStandardMaterial color={CHARCOAL} roughness={0.5} />
+              </mesh>
+              <mesh position={[0, -0.26, 0.24]} rotation-x={Math.PI}>
+                <coneGeometry args={[0.035, 0.2, 8]} />
+                <meshStandardMaterial color="#dde1e8" roughness={0.3} />
+              </mesh>
+              {/* finger lift */}
+              <mesh position={[0.14, 0.02, 0.04]} rotation-z={Math.PI / 2}>
+                <cylinderGeometry args={[0.02, 0.02, 0.14, 8]} />
+                <meshStandardMaterial color={CREAM} roughness={0.45} />
+              </mesh>
+            </group>
           </group>
         </group>
       </group>

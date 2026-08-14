@@ -34,6 +34,7 @@ import { LaneGuides } from "./LaneGuides";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
 import { Tonearm } from "./Tonearm";
+import { Turntable } from "./Turntable";
 import { WALL_CAM_POS, WallScene } from "./WallScene";
 
 const events: ResolveEvent[] = [];
@@ -240,6 +241,7 @@ export function Scene({
       <Lights />
       <DustMotes />
 
+      <Turntable />
       <Tonearm />
       <LaneGuides />
       <Suspense fallback={null}>

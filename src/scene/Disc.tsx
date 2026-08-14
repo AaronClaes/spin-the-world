@@ -122,12 +122,6 @@ export function Disc() {
         <ringGeometry args={[LABEL_RADIUS - 0.1, LABEL_RADIUS - 0.06, 64]} />
         <meshStandardMaterial color="#8a5a22" roughness={0.75} />
       </mesh>
-      {/* spindle */}
-      <mesh position-y={DISC_TOP + 0.012}>
-        <cylinderGeometry args={[0.045, 0.045, 0.03, 16]} />
-        <meshStandardMaterial color="#0c0d11" roughness={0.4} />
-      </mesh>
-
       {/* items are pressed into the grooves — they live in disc space and
           rotate with the record, as does the world being built on the label */}
       <Items />
