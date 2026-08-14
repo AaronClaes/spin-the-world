@@ -43,6 +43,77 @@ export function expandNotes(patterns: NotePattern[]): RunItem[] {
   return notes;
 }
 
+// Lane scatter (spec §7): the authored pattern rows fix WHERE notes land on
+// the grid — the rhythm — but repeating one lane string for ten bars
+// telegraphs the route. Lanes are re-dealt here, seeded on the record id so
+// every load and replay gets the identical chart. Constraint: the runner
+// moves one lane per half beat, so each note must be reachable from the
+// previous item AND must leave the next world piece reachable — variety
+// never charts a forced miss.
+
+// how far the runner can move between two arrivals `gap` beats apart
+const maxLaneDelta = (gap: number) => Math.min(2, Math.floor(gap / 0.5));
+
+// deterministic per-note roll — no Math.random, charts must replay identically
+function laneRoll(seed: string, beat: number): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  const x = Math.sin(h * 0.013 + beat * 127.1) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+export function scatterNoteLanes(
+  notes: RunItem[],
+  pieces: readonly { beat: number; lane: Lane }[],
+  seed: string,
+): void {
+  const fixed = [...pieces].sort((a, b) => a.beat - b.beat);
+  const sorted = [...notes].sort((a, b) => a.beat - b.beat);
+
+  let prevBeat = -8;
+  let prevLane: Lane = 1; // the run starts in the centre lane
+  let sameRun = 0; // consecutive notes dealt the same lane
+  let fi = 0;
+  const usedAtBeat = new Set<Lane>(); // same-beat notes must not collide
+
+  for (const note of sorted) {
+    // pieces passed since the last note anchor the reachability chain
+    while (fi < fixed.length && fixed[fi].beat <= note.beat) {
+      prevBeat = fixed[fi].beat;
+      prevLane = fixed[fi].lane;
+      fi++;
+    }
+    if (note.beat !== prevBeat) usedAtBeat.clear();
+
+    const next = fixed[fi];
+    const candidates = ([0, 1, 2] as Lane[]).filter((l) => {
+      if (usedAtBeat.has(l)) return false;
+      if (Math.abs(l - prevLane) > maxLaneDelta(note.beat - prevBeat))
+        return false;
+      if (next && Math.abs(l - next.lane) > maxLaneDelta(next.beat - note.beat))
+        return false;
+      return true;
+    });
+    // break up three-in-a-row runs when there's a choice
+    const varied =
+      sameRun >= 2 && candidates.length > 1
+        ? candidates.filter((l) => l !== prevLane)
+        : candidates;
+
+    if (varied.length > 0) {
+      const pick =
+        varied[Math.floor(laneRoll(seed, note.beat) * varied.length)];
+      sameRun = pick === prevLane ? sameRun + 1 : 0;
+      note.lane = pick;
+    }
+    // no candidate (shouldn't happen on a valid chart): keep the authored lane
+
+    usedAtBeat.add(note.lane);
+    prevBeat = note.beat;
+    prevLane = note.lane;
+  }
+}
+
 // Load-time validation (spec §7). A record that fails here is a bug in the
 // chart, not a difficulty setting — throw loudly.
 export function validateRecord(record: RecordDef): void {
@@ -95,10 +166,15 @@ export function validateRecord(record: RecordDef): void {
       );
     seen.set(key, piece.id);
   }
+  // Note lanes are re-dealt by the scatter, so a note anywhere on a piece's
+  // beat could land in its lane — piece beats must stay clear in every lane.
+  const pieceBeats = new Map(record.worldPieces.map((p) => [p.beat, p.id]));
   for (const note of expandNotes(record.notePatterns)) {
-    const key = `${note.beat}/${note.lane}`;
-    if (seen.has(key))
-      problems.push(`note and piece ${seen.get(key)} share beat+lane ${key}`);
+    const piece = pieceBeats.get(note.beat);
+    if (piece)
+      problems.push(
+        `note at beat ${note.beat} shares the piece beat of ${piece} — leave piece beats empty in all lanes`,
+      );
   }
 
   if (solveChart(record.worldPieces, record.totalBeats) === null)
@@ -121,7 +197,7 @@ export function buildRunItems(record: RecordDef): RunItem[] {
     status: "pending",
     prop: p.prop,
   }));
-  return [...expandNotes(record.notePatterns), ...pieces].sort(
-    (a, b) => a.beat - b.beat,
-  );
+  const notes = expandNotes(record.notePatterns);
+  scatterNoteLanes(notes, record.worldPieces, record.id);
+  return [...notes, ...pieces].sort((a, b) => a.beat - b.beat);
 }

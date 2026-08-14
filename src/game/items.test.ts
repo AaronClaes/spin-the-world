@@ -45,13 +45,14 @@ describe("validation", () => {
     );
   });
 
-  it("rejects a note and piece on the same beat+lane", () => {
+  it("rejects a note on a piece's beat (lanes are re-dealt at load)", () => {
     const bad = {
       ...base,
-      // piece at beat 2 lane 1 collides with the pattern's step-4 note
+      // piece at beat 2 collides with the pattern's step-4 note — the lane
+      // scatter could deal that note into any lane, so the beat must be clear
       worldPieces: [{ id: "wp01", beat: 2, lane: 1 as const, prop: "box" }],
     };
-    expect(() => validateRecord(bad)).toThrow(/share beat\+lane/);
+    expect(() => validateRecord(bad)).toThrow(/shares the piece beat/);
   });
 
   it("rejects two pieces on the same beat+lane", () => {
@@ -110,5 +111,42 @@ describe("buildRunItems", () => {
   it("meadow reserves step 6 for pieces: no note on beat ≡ 3 (mod 4)", () => {
     const notes = expandNotes(meadow.notePatterns);
     expect(notes.every((n) => n.beat % 4 !== 3)).toBe(true);
+  });
+});
+
+describe("lane scatter", () => {
+  const maxDelta = (gap: number) => Math.min(2, Math.floor(gap / 0.5));
+
+  it("is deterministic: two builds deal identical lanes", () => {
+    const a = buildRunItems(meadow).map((i) => i.lane);
+    const b = buildRunItems(meadow).map((i) => i.lane);
+    expect(a).toEqual(b);
+  });
+
+  it("keeps every item reachable at one lane step per half beat", () => {
+    const items = buildRunItems(meadow);
+    let prevBeat = -8;
+    let prevLane = 1;
+    for (const item of items) {
+      expect(Math.abs(item.lane - prevLane)).toBeLessThanOrEqual(
+        maxDelta(item.beat - prevBeat),
+      );
+      prevBeat = item.beat;
+      prevLane = item.lane;
+    }
+  });
+
+  it("actually varies lanes instead of repeating the authored rows", () => {
+    const notes = buildRunItems(meadow).filter((i) => i.kind === "note");
+    const lanes = new Set(notes.map((n) => n.lane));
+    expect(lanes.size).toBe(3);
+    // no marathon single-lane stretches
+    let run = 1;
+    let longest = 1;
+    for (let i = 1; i < notes.length; i++) {
+      run = notes[i].lane === notes[i - 1].lane ? run + 1 : 1;
+      longest = Math.max(longest, run);
+    }
+    expect(longest).toBeLessThanOrEqual(4);
   });
 });

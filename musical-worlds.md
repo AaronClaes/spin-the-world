@@ -240,7 +240,7 @@ A record is a JSON file plus a music module. Once the first one renders, every a
 ### Authoring rules
 
 - **World pieces roughly every 12–16 beats** (about every other revolution), unevenly spaced, **every piece on its own beat**. Same-beat clusters in different lanes were tried and cut: a charted forced miss reads as unfair, not tense. Perfection should be hard because the lane dance is demanding, never because the chart forbids it.
-- **Notes match the drum pattern.** Dense in choruses, sparse in the intro. Expand patterns into concrete `{beat, lane}` at load — never hand-write 90 note entries.
+- **Notes match the drum pattern.** Dense in choruses, sparse in the intro. Expand patterns into concrete `{beat, lane}` at load — never hand-write 90 note entries. Pattern rows fix the rhythm only: lanes are re-dealt at expansion by a scatter seeded on the record id (identical chart every load), constrained to one lane step per half beat so every note and every piece stays reachable — repeating one lane string for ten bars telegraphs the route.
 - Validate on load: no note and world piece on the same beat+lane; every `prop` name exists in the GLB; `totalBeats` is a multiple of 16; `stemUnlockAtPieces` has 4 entries within the piece count.
 - **Prove completability on load.** Pieces recur at +8 beats when missed, but anything whose recurrence lands past `totalBeats` is gone forever. Run a small solver over the chart (greedy or brute-force — the choice space is tiny) that verifies a perfect player can collect every piece before the track ends. A chart that fails this check is a bug, not a difficulty setting.
 

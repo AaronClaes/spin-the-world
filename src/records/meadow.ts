@@ -39,6 +39,8 @@ export const meadow: RecordDef = {
 
   // 8 steps per bar (eighths), lane 0 first. Step 6 stays empty everywhere —
   // that's the world-piece slot. Density follows the arc of the track.
+  // NOTE: the rows fix the RHYTHM only — lanes are re-dealt at load by the
+  // seeded scatter (items.ts), so which row an x sits in doesn't matter.
   notePatterns: [
     { fromBar: 0, toBar: 2, lanes: ["--------", "----x---", "--------"] },
     { fromBar: 2, toBar: 13, lanes: ["x-------", "--------", "----x---"] },
