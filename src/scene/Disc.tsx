@@ -25,7 +25,7 @@ const rand = (i: number, salt: number) => {
   return x - Math.floor(x);
 };
 
-function GrooveRings() {
+export function GrooveRings() {
   const geometry = useMemo(() => {
     const rings = [];
     for (let r = LABEL_RADIUS + 0.22; r < DISC_RADIUS - 0.18; r += 0.155) {

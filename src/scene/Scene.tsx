@@ -27,6 +27,7 @@ import { Disc } from "./Disc";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
 import { Tonearm } from "./Tonearm";
+import { WALL_CAM_POS, WallScene } from "./WallScene";
 
 const events: ResolveEvent[] = [];
 
@@ -166,9 +167,15 @@ const MAX_DPR =
     ? 1.5
     : 2;
 
-export function Scene() {
+export function Scene({
+  wall,
+  onStart,
+}: {
+  wall: boolean;
+  onStart: () => void;
+}) {
   return (
-    <Canvas dpr={[1, MAX_DPR]} camera={{ position: [-3.9, 3.1, 6.6], fov: 42 }}>
+    <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
       <color attach="background" args={["#0a0c14"]} />
 
       <ClockDriver />
@@ -180,6 +187,7 @@ export function Scene() {
       <Suspense fallback={null}>
         <Disc />
         <Runner />
+        {wall && <WallScene onStart={onStart} />}
       </Suspense>
 
       {/* subtle post stack (spec §9): bloom for the emissive accents,

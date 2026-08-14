@@ -74,6 +74,7 @@ export default function App() {
     setPhase("playing");
     setPaused(false);
     clockState.paused = false;
+    clockState.wall = false; // camera dives from the wall onto the record
     // Fresh run state — a no-op on the first play, the actual reset on replay.
     resetActiveRun();
     clearFlights();
@@ -117,6 +118,7 @@ export default function App() {
       pausePlayback();
     clockState.paused = false;
     clockState.playing = false;
+    clockState.wall = true;
     setPaused(false);
     setSummary(null);
     setPhase("wall");
@@ -144,7 +146,7 @@ export default function App() {
 
   return (
     <>
-      <Scene />
+      <Scene wall={phase === "wall"} onStart={start} />
       {/* CSS shows this only on portrait touch devices (spec §9: landscape) */}
       <div className="rotate-hint">
         <p>
@@ -159,7 +161,7 @@ export default function App() {
           <Hud onPause={pause} />
         </>
       )}
-      {phase === "wall" && <StudioWall onStart={start} />}
+      {phase === "wall" && <StudioWall />}
       {phase === "playing" && paused && (
         <PauseOverlay onResume={resume} onRestart={start} onWall={backToWall} />
       )}

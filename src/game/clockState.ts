@@ -8,6 +8,9 @@ export const clockState = {
   // the disc, items, and music — freezes with zero extra state. This flag
   // only gates input and the run clip's timeScale.
   paused: false,
+  // On the studio wall (title screen). The camera rig flies between the wall
+  // pose and the game pose; dropping the needle is a camera dive.
+  wall: true,
   // Interpolated lane for visuals (runner radius, camera lean). The committed
   // integer lane lives in the store; collection never reads this.
   laneVisual: 1,

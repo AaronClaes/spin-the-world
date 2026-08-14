@@ -18,7 +18,7 @@ const DISC_TOP = DISC_THICKNESS / 2;
 const ARC_HEIGHT = 0.85;
 const GRASS_RADIUS = LABEL_RADIUS - 0.12; // label paper stays visible as a rim
 
-function slotPosition(index: number, count: number): [number, number] {
+export function slotPosition(index: number, count: number): [number, number] {
   const angle = index * GOLDEN_ANGLE;
   const r = 0.28 + 0.55 * Math.sqrt((index + 0.5) / count);
   return [Math.sin(angle) * r, Math.cos(angle) * r];
