@@ -224,21 +224,164 @@ canvas {
   text-shadow: 0 1px 10px rgba(255, 255, 255, 0.5);
 }
 
+/* the HUD, overlays and buttons all speak the chunky rounded game voice */
+.game-hud,
+.overlay,
+.pause-button {
+  font-family: "Baloo 2 Variable", system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------- score --- */
+
+.score-slot {
+  position: relative;
+}
+
 .game-hud .score {
-  font-size: 1.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  transform-origin: left center;
+  animation: score-bump 0.3s ease-out;
 }
 
-.game-hud .combo {
-  font-size: 0.95rem;
-  opacity: 0.75;
-  min-height: 1.3em;
+/* remounted per gain: punches in, flashing the caught note's colour */
+@keyframes score-bump {
+  0% {
+    transform: scale(1.2);
+    color: var(--flash, #2c3140);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
-.game-hud .combo.hot {
+.score-float {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 0.35em;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--flash, #b06f10);
+  animation: score-float 0.8s ease-out forwards;
+}
+
+@keyframes score-float {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------- combo --- */
+
+.combo-slot {
+  position: relative;
+  margin-top: 2px;
+  min-height: 1.6em;
+}
+
+.combo-live {
+  transform-origin: left center; /* rAF beat pulse lands here */
+}
+
+.combo-chip {
+  display: inline-block;
+  font-weight: 800;
+  color: #4a5064;
+  line-height: 1.15;
+  transform-origin: left center;
+  animation: combo-punch 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.combo-word {
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.combo-chip.hot {
   color: #b06f10;
-  opacity: 1;
+}
+
+.combo-chip.blazing {
+  color: #d0651f;
+  text-shadow: 0 0 14px rgba(224, 138, 60, 0.5);
+}
+
+.combo-chip.rainbow {
+  text-shadow: 0 0 16px rgba(255, 210, 122, 0.6);
+  animation:
+    combo-punch 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    combo-rainbow 1.5s linear infinite;
+}
+
+@keyframes combo-punch {
+  0% {
+    transform: scale(1.55) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* the candy palette, deepened for contrast against the sky */
+@keyframes combo-rainbow {
+  0%,
+  100% {
+    color: #e09a2f;
+  }
+  17% {
+    color: #e75f8d;
+  }
+  34% {
+    color: #3fae57;
+  }
+  50% {
+    color: #3d8fd9;
+  }
+  67% {
+    color: #8f63d9;
+  }
+  84% {
+    color: #2fae9f;
+  }
+}
+
+/* the chain broke: the counter tips over and tumbles off the screen */
+.combo-dead {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #4a5064;
+  pointer-events: none;
+  animation: combo-death 0.9s ease-in forwards;
+}
+
+@keyframes combo-death {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  22% {
+    transform: translate(12px, -18px) rotate(20deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(120px, 65vh) rotate(160deg);
+    opacity: 0.7;
+  }
 }
 
 /* one dot per world piece — the only goal readout the HUD needs */
@@ -253,6 +396,7 @@ canvas {
 }
 
 .piece-dots .dot {
+  position: relative;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -263,11 +407,65 @@ canvas {
   background: #e8a33d;
   border-color: #c9861f;
   box-shadow: 0 0 8px rgba(232, 163, 61, 0.55);
+  animation: dot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* a one-shot ring bursts off a freshly filled dot */
+.piece-dots .dot.got::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 163, 61, 0.85);
+  animation: dot-ring 0.55s ease-out forwards;
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0.3);
+  }
+  55% {
+    transform: scale(1.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes dot-ring {
+  0% {
+    transform: scale(0.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
 }
 
 .piece-dots .dot.lost {
   border-color: rgba(210, 100, 90, 0.8);
   background: rgba(210, 100, 90, 0.25);
+  animation: dot-shake 0.45s ease-out;
+}
+
+@keyframes dot-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
 }
 
 .pause-button {
