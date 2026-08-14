@@ -10,16 +10,18 @@ import {
 } from "../game/constants";
 import { bandCenter } from "../game/geometry";
 import { activeRun } from "../game/runState";
+import { NOTE_PALETTE } from "./notePalette";
 
 // The stylus visibly plays the record: a tiny glint marks the contact point,
 // and on every beat a little music note pops off the groove, flicked in the
 // direction the vinyl is moving under the needle, rising and fading. Beat-
 // locked spawning means the effect pulses with the music for free.
 //
-// Notes are primitive-built (head + stem + flag / beamed pair) in the
-// machine's accent orange, unlit so they read as flat cartoon marks against
-// both the black vinyl and the pale sky. A fixed pool is recycled — nothing
-// allocates per frame.
+// Notes are primitive-built (head + stem + flag / beamed pair), each spawn
+// dealt a colour from the collectible notes' candy palette — hashed on the
+// spawn counter, independent of what the player catches. Unlit so they read
+// as flat cartoon marks against both the black vinyl and the pale sky. A
+// fixed pool is recycled — nothing allocates per frame.
 
 const DISC_TOP = DISC_THICKNESS / 2;
 const NEEDLE_ANGLE = NEEDLE_LEAD_BEATS * RAD_PER_BEAT; // 90° — needle on +X
@@ -28,8 +30,6 @@ const POOL = 6;
 const LIFE = 1.5; // seconds a note lives
 const RISE = 0.75; // world units/second upward
 const DRIFT_Z = 0.95; // tangential flick — the groove moves toward +Z here
-
-const ORANGE = "#e8973c";
 
 // deterministic per-spawn variation — no Math.random, replays identically
 const jitter = (n: number, salt: number) => {
@@ -98,6 +98,7 @@ export function NeedleNotes() {
   const glint = useRef<Mesh>(null);
   const prevBeat = useRef(-1);
   const spawned = useRef(0);
+  const prevColor = useRef(-1);
 
   const slots = useMemo<Slot[]>(
     () =>
@@ -112,7 +113,8 @@ export function NeedleNotes() {
     () =>
       Array.from(
         { length: POOL },
-        () => new MeshBasicMaterial({ color: ORANGE, transparent: true }),
+        () =>
+          new MeshBasicMaterial({ color: NOTE_PALETTE[0], transparent: true }),
       ),
     [],
   );
@@ -144,6 +146,12 @@ export function NeedleNotes() {
         slot.active = true;
         slot.age = 0;
         slot.seed = spawned.current;
+        // deal a palette colour per spawn — hashed, so replays match, with
+        // a nudge so two notes in a row never share a colour
+        let c = Math.floor((jitter(slot.seed, 5) + 0.5) * NOTE_PALETTE.length);
+        if (c === prevColor.current) c = (c + 1) % NOTE_PALETTE.length;
+        prevColor.current = c;
+        materials[i].color.set(NOTE_PALETTE[c]);
         // spawn a touch along the groove's travel so the arm doesn't hide it
         g.position.set(nx, DISC_TOP + 0.06, nz + 0.2);
         g.visible = true;
