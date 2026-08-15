@@ -63,7 +63,8 @@ export function InfoPanel({ onClose }: Props) {
               >
                 KayKit Adventurers
               </a>{" "}
-              pack by Kay Lousberg — CC0, cape dropped and headphones added
+              pack by Kay Lousberg — CC0, repainted into modern clothes with
+              headphones added
             </dd>
           </div>
           <div>

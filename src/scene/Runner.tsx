@@ -57,7 +57,14 @@ const DISC_TOP = DISC_THICKNESS / 2;
 // The head bone sits at the head's base; the chibi head spans y 0→1.08 and
 // x ±0.54 in bone space. Band arc lies in the XY plane (ear to ear over the
 // crown); cups press onto the sides just proud of the head.
-function Headphones({ head, accent }: { head: Object3D; accent: string }) {
+//
+// The cups used to carry an emissive ring in the record's accent colour, and
+// it had to go: it sits on the OUTER face of each cup, and the camera is
+// parked off to one side, so you only ever saw one of the pair. A symmetric
+// object lit asymmetrically reads as a modelling mistake, not as an accent.
+// The accent still runs the lane guides and the piece rings (§9); it just
+// doesn't ride on the character any more.
+function Headphones({ head }: { head: Object3D }) {
   return createPortal(
     <group position={[0, 0.5, 0.02]}>
       {/* band arcs over the crown */}
@@ -75,16 +82,6 @@ function Headphones({ head, accent }: { head: Object3D; accent: string }) {
           <mesh>
             <cylinderGeometry args={[0.26, 0.3, 0.16, 18]} />
             <meshStandardMaterial color="#23263a" roughness={0.6} />
-          </mesh>
-          {/* accent ring on the outer face — the one colour that carries it */}
-          <mesh position-y={0.09}>
-            <cylinderGeometry args={[0.2, 0.2, 0.02, 18]} />
-            <meshStandardMaterial
-              color={accent}
-              emissive={accent}
-              emissiveIntensity={0.6}
-              roughness={0.4}
-            />
           </mesh>
         </group>
       ))}
@@ -182,9 +179,7 @@ export function Runner() {
       {/* the bank pivots at the feet, on the running axis */}
       <group ref={body}>
         <primitive object={scene} />
-        {head && (
-          <Headphones head={head} accent={activeRun.record.accentColor} />
-        )}
+        {head && <Headphones head={head} />}
       </group>
       {/* contact shadow — a dark disc sprite, not a shadow map (spec §9) */}
       <mesh rotation-x={-Math.PI / 2} position-y={0.015}>

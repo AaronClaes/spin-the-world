@@ -1,7 +1,8 @@
 // Build the listener (spec §8.2) from KayKit's Adventurers pack (CC0, Kay
-// Lousberg). The body is the Rogue: a tunic, a belt and boots read as someone
-// who might plausibly be out for a run with headphones on, which a knight in
-// plate never did no matter how flat we repainted it.
+// Lousberg): the Rogue's body, the Ranger's head, three clips off the 1.x
+// knight, and a repaint that turns the costume into a sweatshirt, jeans and
+// trainers. Someone out for a run with headphones on — which is what the game
+// is about, and which no amount of repainting a knight in plate would give.
 //
 // The body and the clips come from two different versions of the same pack,
 // and that is deliberate. Pack 1.x baked the whole 76-clip library into every
@@ -15,14 +16,13 @@
 // so the 54 IK-helper channels per clip are redundant and get dropped with the
 // bones they point at.
 //
-// The pack's own texture is kept rather than flat-repainted, unlike the knight
-// build this replaces. It's a 15 KB atlas of flat gradient swatches, it's the
-// same kind of texture the diorama props already use, and it's the only thing
-// that separates hair from scalp: the head, hair and face are one primitive
-// sharing one material, so a flat repaint would have shaved him bald.
+// The head alone keeps the pack's texture, because hair, face and neck are one
+// primitive sharing one material there — flat-repaint it and he goes bald. The
+// atlas is 13 KB of flat gradient swatches, the same kind the diorama props
+// already use, so it costs nothing and breaks no style rule.
 //
 // Usage: node scripts/build-runner.mjs  (rewrites public/models/runner.glb
-// from assets-src/runner-rogue-original.glb + runner-knight-original.glb)
+// from the three runner-*-original.glb files in assets-src/)
 import { NodeIO } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 import {
@@ -57,6 +57,59 @@ const HEAD = {
   file: "assets-src/runner-ranger-original.glb",
   node: "Ranger_Head",
   parent: "Rig_Medium",
+};
+
+// Repaint the body out of costume and into clothes. The pack's atlas is a grid
+// of swatches, so every part of the character is identifiable by which swatch
+// its triangles sample: the belt is one rectangle of UV space, the bracers are
+// another, the boots another. Splitting each mesh along those lines and giving
+// each group a flat colour is both the repaint AND the way the adventurer gear
+// leaves — a belt painted the same grey as the sweatshirt over it stops being
+// a belt and becomes a fold, with no hole where it used to be. Nothing is
+// deleted, which matters: these are shells laid over the body, and cutting
+// them out would open it up.
+//
+// Head is exempt — it keeps the Ranger's texture, because hair and skin share
+// a primitive there (see above).
+const SKIN = "#f2c19d"; // the hands; the head's own atlas skin is ~#f8ccab
+const TOP = "#848b98"; // heather-grey sweatshirt
+const JEANS = "#414a63"; // dark denim — legs need to stay visible on vinyl
+const SHOE = "#dfe3e8";
+const SOLE = "#aab0b9";
+const WATCH = "#2b2f36";
+
+// [u0, u1, v0, v1] of the swatch, the part it belongs to, and optionally the
+// only mesh it applies to — the metal swatch is a wrist strap on the arms and
+// a belt buckle on the body, and those two want different answers.
+const REPAINT = [
+  { uv: [0.0, 0.12, 0.1, 0.22], color: SKIN, part: "hands" },
+  { uv: [0.0, 0.12, 0.28, 0.47], color: TOP, part: "sweatshirt" },
+  { uv: [0.14, 0.21, 0.3, 0.43], color: TOP, part: "sweatshirt yoke" },
+  { uv: [0.62, 0.73, 0.05, 0.23], color: TOP, part: "belt and shoulders" },
+  { uv: [0.75, 0.87, 0.05, 0.23], color: TOP, part: "straps and pouches" },
+  { uv: [0.38, 0.48, 0.02, 0.2], color: TOP, part: "buckle", mesh: "Body" },
+  { uv: [0.38, 0.48, 0.02, 0.2], color: WATCH, part: "watch", mesh: "Arm" },
+  {
+    uv: [0.88, 0.97, 0.34, 0.45],
+    color: JEANS,
+    part: "trousers",
+    mesh: "Body",
+  },
+  { uv: [0.88, 0.97, 0.57, 0.71], color: SKIN, part: "bracers → forearms" },
+  // The legs are cut by HEIGHT rather than by swatch, because the boot is one
+  // swatch from sole to knee and a knee-high white boot is not what anyone
+  // means by trainers. The mesh hands us the seams: the vertex rings sit at
+  // 0.169 and 0.186 with a gap above, so a cut at 0.18 lands on a ring rather
+  // than through a face, and the boot shaft above it — flared cuff and all —
+  // reads as the fold at the bottom of a trouser leg.
+  { mesh: "Leg", y: [-9, 0.045], color: SOLE, part: "soles" },
+  { mesh: "Leg", y: [0.045, 0.18], color: SHOE, part: "trainers" },
+  { mesh: "Leg", y: [0.18, 9], color: JEANS, part: "trouser legs" },
+];
+
+const hexToLinear = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return [16, 8, 0].map((s) => (((n >> s) & 255) / 255) ** 2.2).concat(1);
 };
 
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
@@ -160,6 +213,87 @@ for (const mesh of root.listMeshes())
   if (!preHead.meshes.has(mesh) && mesh !== headNode.getMesh()) mesh.dispose();
 for (const node of root.listNodes())
   if (!preHead.nodes.has(node) && node !== headNode) node.dispose();
+
+// Split every body mesh along swatch boundaries and paint the pieces. The
+// triangles keep pointing at the same POSITION/JOINTS/WEIGHTS accessors — only
+// the index buffer is new — so the split costs nothing in vertex data and the
+// skinning is untouched.
+const flat = new Map();
+const material = (hex) => {
+  if (!flat.has(hex)) {
+    flat.set(
+      hex,
+      doc
+        .createMaterial(`flat${hex}`)
+        .setBaseColorFactor(hexToLinear(hex))
+        .setMetallicFactor(0)
+        .setRoughnessFactor(0.9),
+    );
+  }
+  return flat.get(hex);
+};
+
+const buffer = root.listBuffers()[0];
+for (const node of root.listNodes()) {
+  const mesh = node.getMesh();
+  if (!mesh || node === headNode) continue;
+
+  for (const prim of mesh.listPrimitives()) {
+    const uv = prim.getAttribute("TEXCOORD_0").getArray();
+    const pos = prim.getAttribute("POSITION").getArray();
+    const indices = prim.getIndices().getArray();
+    const groups = new Map();
+    let unmatched = 0;
+
+    for (let t = 0; t < indices.length; t += 3) {
+      let u = 0;
+      let v = 0;
+      let y = 0;
+      for (const k of [0, 1, 2]) {
+        u += uv[indices[t + k] * 2] / 3;
+        v += uv[indices[t + k] * 2 + 1] / 3;
+        y += pos[indices[t + k] * 3 + 1] / 3;
+      }
+      const rule = REPAINT.find(
+        (r) =>
+          (!r.uv ||
+            (u >= r.uv[0] && u <= r.uv[1] && v >= r.uv[2] && v <= r.uv[3])) &&
+          (!r.y || (y >= r.y[0] && y < r.y[1])) &&
+          (!r.mesh || node.getName().includes(r.mesh)),
+      );
+      if (!rule) {
+        unmatched++;
+        continue;
+      }
+      if (!groups.has(rule.color)) groups.set(rule.color, []);
+      groups.get(rule.color).push(indices[t], indices[t + 1], indices[t + 2]);
+    }
+    if (unmatched) {
+      throw new Error(
+        `${node.getName()}: ${unmatched} triangles match no swatch — the atlas layout moved`,
+      );
+    }
+
+    for (const [hex, list] of groups) {
+      const split = doc
+        .createPrimitive()
+        .setMaterial(material(hex))
+        .setIndices(
+          doc
+            .createAccessor()
+            .setType("SCALAR")
+            .setArray(new Uint16Array(list))
+            .setBuffer(buffer),
+        );
+      for (const name of prim.listSemantics()) {
+        split.setAttribute(name, prim.getAttribute(name));
+      }
+      mesh.addPrimitive(split);
+    }
+    mesh.removePrimitive(prim);
+    prim.dispose();
+  }
+}
 
 await doc.transform(
   dedup(),
