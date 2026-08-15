@@ -4,6 +4,7 @@ import { BEATS_PER_REV } from "../game/constants";
 import { buildRunItems, validateRecord } from "../game/items";
 import { songFor } from "../music";
 import { islandFor } from "../scene/islandLayout";
+import { DRESSING } from "../scene/neonDressing";
 import { PROC_PROPS } from "../scene/procProps";
 import { RECORDS, recordById } from ".";
 
@@ -94,6 +95,23 @@ describe("the shelf", () => {
       expect(Object.keys(island.spots).sort()).toEqual(props);
     },
   );
+
+  // The neon dressing registry is keyed by prop name alone, so a future
+  // record shipping a prop called "lamp" or "block" would silently have its
+  // materials swapped for glowing ones.
+  it("only lights props that belong to the neon record", () => {
+    for (const record of RECORDS) {
+      if (record.id === "neon") continue;
+      for (const piece of record.worldPieces)
+        expect({ record: record.id, prop: piece.prop, dressed: false }).toEqual(
+          {
+            record: record.id,
+            prop: piece.prop,
+            dressed: piece.prop in DRESSING,
+          },
+        );
+    }
+  });
 
   it.each(RECORDS.map((r) => [r.id, r] as const))(
     "%s deals a playable set of items",

@@ -1,12 +1,20 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { Color, InstancedMesh, Mesh, Object3D } from "three";
+import {
+  AdditiveBlending,
+  Color,
+  DoubleSide,
+  InstancedMesh,
+  Mesh,
+  Object3D,
+} from "three";
 import type { MeshBasicMaterial } from "three";
 import {
   CAP_H,
   HEX_R,
   ISLAND_BASE,
   type IslandDef,
+  type Tile,
   tileTop,
 } from "./islandLayout";
 
@@ -136,6 +144,78 @@ function CompletionSweep({
   );
 }
 
+// ------------------------------------------------------------- lit kerbs --
+
+// A thin band of light around the top edge of every tile of a lit kind. One
+// open-ended six-sided cylinder per tile, sharing the caps' geometry
+// parameters so the hexes line up exactly, and additive so it can only
+// brighten — over near-black vinyl ordinary transparency would drag these to
+// grey, which is the same trap the lighthouse beam fell into.
+//
+// Instanced and coloured per instance, so a whole street plan costs one draw
+// call. The whole set breathes on one clock: these are the ground, not
+// individual fittings, and they should feel like one circuit.
+// Sat level with the cap the band came out dashed: where a lit tile meets a
+// taller one, the neighbour's cap swallowed half the ring. It rides just
+// proud of the tile top and a hair wider than the cap instead.
+const KERB_H = 0.01;
+const KERB_R = HEX_R * 1.004;
+
+function LitKerbs({ island, alive }: { island: IslandDef; alive: boolean }) {
+  const mesh = useRef<InstancedMesh>(null);
+  const material = useRef<MeshBasicMaterial>(null);
+  const lit = useMemo(
+    () =>
+      island.glow
+        ? island.tiles
+            .map((t) => ({ t, color: island.glow?.[t.kind] }))
+            .filter((e): e is { t: Tile; color: string } => !!e.color)
+        : [],
+    [island],
+  );
+
+  const layout = (inst: InstancedMesh) => {
+    const d = new Object3D();
+    lit.forEach(({ t, color }, i) => {
+      d.position.set(t.x, tileTop(t.kind) + KERB_H * 0.32, t.z);
+      d.updateMatrix();
+      inst.setMatrixAt(i, d.matrix);
+      inst.setColorAt(i, new Color(color));
+    });
+    inst.instanceMatrix.needsUpdate = true;
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+    inst.frustumCulled = false;
+  };
+
+  useFrame(({ clock }) => {
+    if (!material.current) return;
+    const t = clock.elapsedTime;
+    material.current.opacity =
+      (alive ? 0.95 : 0.78) * (0.86 + 0.14 * Math.sin(t * 1.25));
+  });
+
+  if (!lit.length) return null;
+  return (
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, lit.length]}
+      onUpdate={layout}
+      renderOrder={2}
+    >
+      <cylinderGeometry args={[KERB_R, KERB_R, KERB_H, 6, 1, true]} />
+      <meshBasicMaterial
+        ref={material}
+        transparent
+        opacity={0.78}
+        blending={AdditiveBlending}
+        depthWrite={false}
+        side={DoubleSide}
+        toneMapped={false}
+      />
+    </instancedMesh>
+  );
+}
+
 // -------------------------------------------------------------- the plate --
 
 export function Island({
@@ -241,6 +321,7 @@ export function Island({
         <cylinderGeometry args={[HEX_R, HEX_R, CAP_H, 6]} />
         <meshStandardMaterial color="#ffffff" roughness={0.85} />
       </instancedMesh>
+      <LitKerbs island={island} alive={alive} />
       <CompletionSweep alive={alive} radius={radius} />
     </>
   );

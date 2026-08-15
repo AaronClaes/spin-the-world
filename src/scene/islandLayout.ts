@@ -78,6 +78,12 @@ export interface IslandDef {
   spots: Record<string, Spot>;
   palette: Record<TileKind, string>;
   waterLit: string; // the second tone water shimmers toward
+  // Tile kinds whose rim is lit, and in what colour. A thin additive band
+  // around the top edge of every tile of that kind (Island.tsx) — which on
+  // the city turns the street plan into a glowing grid, and is the closest
+  // this gets to the wet, lit asphalt the whole look is built on. Undefined
+  // on an island that doesn't want it, which is both of the outdoor ones.
+  glow?: Partial<Record<TileKind, string>>;
 }
 
 // Build the shared plate outline, then paint it with the record's tile kinds.
@@ -87,6 +93,7 @@ function island(
   spots: Record<string, Spot>,
   palette: Record<TileKind, string>,
   waterLit: string,
+  glow?: Partial<Record<TileKind, string>>,
 ): IslandDef {
   const tiles: Tile[] = [];
   for (let q = -RING; q <= RING; q++) {
@@ -100,7 +107,7 @@ function island(
     }
   }
   const radius = Math.max(...tiles.map((t) => Math.hypot(t.x, t.z))) + HEX_R;
-  return { tiles, radius, spots, palette, waterLit };
+  return { tiles, radius, spots, palette, waterLit, glow };
 }
 
 // ------------------------------------------------------------- the meadow --
@@ -300,6 +307,10 @@ const NEON = island(
   // The canal shimmers violet rather than sky-blue: the only things lighting
   // it on this record are the sign and a dusk sky.
   "#5b6fd8",
+  // The street plan, lit. Magenta down every road and cyan around the canal
+  // and the forecourt: the roads were already the thing carrying the
+  // composition, and this is what makes them carry it at a glance.
+  { path: "#ff2d8e", water: "#2de0ff", sand: "#ffb43d" },
 );
 
 const ISLANDS: Record<string, IslandDef> = {

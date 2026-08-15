@@ -10,6 +10,7 @@ import { usePropClone } from "./dioramaProps";
 import { activeFlights, FLIGHT_DURATION } from "./flights";
 import { Island } from "./Island";
 import { type IslandDef, islandFor, placementFor } from "./islandLayout";
+import type { NeonPulse } from "./neonDressing";
 import { BEAM_NODE, TUBES_NODE } from "./procProps";
 
 // The tiny world on the label (spec §8.4). Three states per piece, and the
@@ -335,6 +336,17 @@ function PlantedProp({
     () => clone.getObjectByName(TUBES_NODE) ?? null,
     [clone],
   );
+  // Everything the neon dressing lit, whatever prop it belongs to. Collected
+  // by traversal rather than by name because the lit parts are a mix of added
+  // strips and the source model's own window quads.
+  const neon = useMemo(() => {
+    const out: { mesh: Mesh; pulse: NeonPulse }[] = [];
+    clone.traverse((o) => {
+      const pulse = (o.userData as { neon?: NeonPulse }).neon;
+      if (pulse) out.push({ mesh: o as Mesh, pulse });
+    });
+    return out;
+  }, [clone]);
   const phase = useMemo(() => spot.x * 7.3 + spot.z * 4.1, [spot]);
 
   useFrame(({ clock }, delta) => {
@@ -359,6 +371,18 @@ function PlantedProp({
 
     let y = spot.y;
     let tilt = 0;
+
+    // The city's lights breathe. Each one has its own speed and phase, so a
+    // block of forty windows never dims as one panel — and the whole island
+    // burns a little harder once the world is alive.
+    for (const { mesh, pulse } of neon) {
+      const k =
+        1 -
+        pulse.depth * (0.5 + 0.5 * Math.sin(now * pulse.speed + pulse.phase));
+      (mesh.material as MeshBasicMaterial).color
+        .copy(pulse.base)
+        .multiplyScalar(alive ? k * 1.15 : k);
+    }
 
     switch (prop) {
       case "mill":
