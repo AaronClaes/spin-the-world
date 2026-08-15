@@ -8,8 +8,11 @@
 //   harbour — Quaternius (CC0) throughout; the lighthouse is built in code
 //             (src/scene/procProps.ts) rather than sourced, so it can turn its
 //             beam
+//   neon    — Kenney city buildings + Quaternius street furniture (both CC0),
+//             repainted for night by `recolor`; the sign is built in code so
+//             its tubes can flicker
 //
-// Usage: node scripts/build-diorama.mjs [meadow|harbour]   (default: both)
+// Usage: node scripts/build-diorama.mjs [meadow|harbour|neon]  (default: all)
 import { Document, NodeIO, getBounds } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 import {
@@ -31,6 +34,36 @@ import { MeshoptSimplifier } from "meshoptimizer";
 // pick = take one named node out of a multi-prop file.
 // simplify = collapse to this fraction of the triangles first — these render
 // about 130px tall, so a dense source model is paying for detail nobody sees.
+// recolor = repaint a source material by name, { base } and/or { emissive }.
+// Every CC0 city pack is lit for daylight, and a grey-and-white office block
+// on a night island reads as a daytime model someone forgot to turn off. This
+// is also the only way to get lit windows: the walls go dark and the window
+// material picks up an emissive factor, so the building lights itself.
+// The night repaint for Kenney's city kit. Walls and trim go to dark slate;
+// the glass picks up an emissive factor so the block lights its own windows,
+// which is the whole difference between an office building and a city block
+// after dark.
+const NIGHT = {
+  _defaultMat: { base: [0.15, 0.14, 0.2] },
+  border: { base: [0.09, 0.09, 0.12] },
+  door: { base: [0.07, 0.07, 0.1] },
+  // Base stays dark and the emissive does the lighting. Pushing the base up
+  // instead made a building that was bright all over rather than one with lit
+  // windows — the walls have to stay dark for the glass to read as glass.
+  window: { base: [0.34, 0.24, 0.11], emissive: [0.8, 0.5, 0.14] },
+};
+
+// The tower is nearly all glass in the source — `window` and `trim` are two
+// sheets of curtain wall, not a pane and a moulding. Given the block's warm
+// office lighting it came out as one cream slab with no windows in it at all,
+// so it goes the other way: dark blue glass reflecting the dusk, lit only
+// faintly. Two buildings, two reads, and the small warm one wins the eye.
+const NIGHT_TOWER = {
+  ...NIGHT,
+  window: { base: [0.16, 0.19, 0.3], emissive: [0.13, 0.18, 0.33] },
+  trim: { base: [0.1, 0.12, 0.19], emissive: [0.05, 0.09, 0.2] },
+};
+
 const RECORDS = {
   meadow: [
     { name: "mill", file: "building_windmill_red.gltf", height: 0.44 },
@@ -69,6 +102,81 @@ const RECORDS = {
       error: 0.09,
     },
   ],
+  neon: [
+    // Kenney's buildings share material names, so one night palette does both
+    {
+      name: "tower",
+      file: "neon-tower.glb",
+      height: 0.42,
+      recolor: NIGHT_TOWER,
+    },
+    {
+      name: "block",
+      file: "neon-block.glb",
+      span: 0.3,
+      simplify: 0.6,
+      recolor: NIGHT,
+    },
+    {
+      // Both of these are textured off a shared atlas, so there's no material
+      // to repaint by name — the base factor multiplies the whole texture
+      // instead, which is exactly what "the sun went down" does to a prop.
+      // Left alone the tank was the palest thing on a night island.
+      name: "watertower",
+      file: "neon-watertower.glb",
+      height: 0.3,
+      recolor: { "Atlas.049": { base: [0.42, 0.42, 0.52] } },
+    },
+    {
+      name: "signal",
+      file: "neon-signal.glb",
+      height: 0.22,
+      recolor: { "Atlas.052": { base: [0.55, 0.55, 0.62] } },
+    },
+    {
+      name: "lamp",
+      file: "neon-lamp.glb",
+      height: 0.2,
+      recolor: {
+        Grey: { base: [0.13, 0.13, 0.17] },
+        Light: { base: [0.8, 0.7, 0.45], emissive: [0.85, 0.66, 0.34] },
+      },
+    },
+    {
+      // sourced as a medieval market stand, which is what a search for
+      // "street food" gets you in CC0. The repaint is what makes it a noodle
+      // bar: dark frame, hot awning, and a counter that lights itself.
+      name: "stall",
+      file: "neon-stall.glb",
+      height: 0.16,
+      recolor: {
+        RoofTiles_Red: { base: [0.62, 0.1, 0.12] },
+        Beige: { base: [0.5, 0.34, 0.14], emissive: [0.75, 0.45, 0.13] },
+        Wood: { base: [0.1, 0.09, 0.12] },
+        Wood_Side: { base: [0.14, 0.12, 0.16] },
+      },
+    },
+    {
+      // 3.3k triangles of car for a prop that renders about 25px long
+      name: "taxi",
+      file: "neon-taxi.glb",
+      span: 0.2,
+      simplify: 0.4,
+      recolor: {
+        Headlights: { emissive: [0.9, 0.75, 0.45] },
+        TailLights: { emissive: [0.8, 0.08, 0.06] },
+      },
+    },
+    { name: "dumpster", file: "neon-dumpster.glb", span: 0.11 },
+    // a thousand triangles for a red dot 20px tall
+    {
+      name: "hydrant",
+      file: "neon-hydrant.glb",
+      height: 0.055,
+      simplify: 0.3,
+      error: 0.08,
+    },
+  ],
 };
 
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
@@ -103,6 +211,25 @@ async function build(record, props) {
     }
     for (const node of src.getRoot().listNodes()) node.setSkin(null);
     for (const skin of src.getRoot().listSkins()) skin.dispose();
+
+    // Repaint before the merge, while material names are still this file's
+    // own — after mergeDocuments several props can carry the same name.
+    if (prop.recolor) {
+      const seen = new Set();
+      for (const mat of src.getRoot().listMaterials()) {
+        const rule = prop.recolor[mat.getName()];
+        if (!rule) continue;
+        seen.add(mat.getName());
+        if (rule.base) mat.setBaseColorFactor([...rule.base, 1]);
+        if (rule.emissive) mat.setEmissiveFactor(rule.emissive);
+      }
+      const missed = Object.keys(prop.recolor).filter((n) => !seen.has(n));
+      // a renamed source material would silently leave the prop in daylight
+      if (missed.length)
+        console.warn(
+          `  ! ${prop.name}: no material named ${missed.join(", ")}`,
+        );
+    }
 
     // Simplify before the merge so the ratio applies to this prop alone —
     // run on the merged document it would be measured against every mesh.

@@ -10,15 +10,17 @@ Build spec: [musical-worlds.md](musical-worlds.md)
 
 ## Records
 
-Two are pressed, both playable from the start:
+Three are pressed, all playable from the start:
 
 |                | tempo                                   | world                                            |
 | -------------- | --------------------------------------- | ------------------------------------------------ |
 | **Meadow 45**  | 120bpm · 15 RPM · folk, G major         | a windmill village with a pond and a dirt track  |
 | **Harbour 33** | 100bpm · 12.5 RPM · sea shanty, D minor | a lighthouse coast with a jetty out over the bay |
+| **Neon 78**    | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign     |
 
 BPM sets RPM — eight beats to a revolution — so the 33 is a genuinely calmer
-record to stand on as well as a slower tune.
+record to stand on as well as a slower tune, and the 78 is the hard one: more
+notes, and stems that only unlock on the ninth of ten world pieces.
 
 ## How to play
 
@@ -41,7 +43,7 @@ Append `?debug` to the URL for the sync/drift debug HUD.
 
 ## Ship
 
-`npm run build` emits a fully static site in `dist/` (~3.4MB total) — deploy
+`npm run build` emits a fully static site in `dist/` (~4MB total) — deploy
 as-is to Vercel or Netlify, no server or config needed.
 
 ## Credits
@@ -50,6 +52,7 @@ as-is to Vercel or Netlify, no server or config needed.
 - Runner: based on the Knight from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: flat repaint, headphones added, see `scripts/build-runner.mjs`)
 - Meadow props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) by Kay Lousberg — CC0 (windmill, home, well, trees, stone fence, wheelbarrow, waterlily)
 - Harbour props: [Quaternius](https://quaternius.com/) — CC0 (hut, dock, sail boat, crate, barrel, rocks, palm tree, anchor, chest). The lighthouse is built from primitives in `src/scene/procProps.ts` so its beam can turn.
+- Neon props: [Kenney](https://kenney.nl/) — CC0 (skyscraper, apartment block) and [Quaternius](https://quaternius.com/) — CC0 (market stand, taxi, street light, traffic signal, water tower, dumpster, fire hydrant). All repainted for night by `recolor` in `scripts/build-diorama.mjs`. The neon sign is built from primitives so its tubes can flicker.
 - Sheep, flower bushes, and sky clouds by [Quaternius](https://quaternius.com/) — CC0
 - Every model is CC0. Sourced from [poly.pizza](https://poly.pizza/) with `scripts/poly-search.py`, which refuses to download anything not marked CC0.
 - Kitbash sources live in `assets-src/`; `scripts/build-diorama.mjs` merges them into one GLB per record under `public/models/`

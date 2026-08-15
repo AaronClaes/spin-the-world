@@ -1,5 +1,6 @@
 import { harbourSong } from "./harbour";
 import { meadowSong } from "./meadow";
+import { neonSong } from "./neon";
 import type { SongDef } from "./types";
 
 // One arrangement per record, keyed by record id. Kept separate from the
@@ -8,6 +9,7 @@ import type { SongDef } from "./types";
 const SONGS: Record<string, SongDef> = {
   [meadowSong.id]: meadowSong,
   [harbourSong.id]: harbourSong,
+  [neonSong.id]: neonSong,
 };
 
 export function songFor(recordId: string): SongDef {

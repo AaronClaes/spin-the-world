@@ -19,6 +19,8 @@ import {
   Object3D,
 } from "three";
 import { clockState } from "../game/clockState";
+import { activeRun } from "../game/runState";
+import { DAYLIGHT, skyFor } from "../records/sky";
 
 // The place the record floats in (spec §9: free atmosphere). The sky used to
 // be a single flat Color on scene.background — no gradient, no parallax, so
@@ -38,12 +40,12 @@ import { clockState } from "../game/clockState";
 // about 45° below it, so MID→LOW is the gradient that actually ships: pale
 // haze along the top of the frame, deepening as you look further down. TOP is
 // only glimpsed on the dive.
-const SKY_TOP = new Color("#3f92d4"); // straight up: the deep end
-const SKY_MID = new Color("#a8d8f2"); // horizon haze — the old flat sky colour
-const SKY_LOW = new Color("#5f9ecd"); // far below: a real blue to sit the deck on
+// The dome gradient and the cloud tint now come off the record (records/sky.ts)
+// and are lerped toward per frame, so picking a different record crossfades the
+// weather rather than cutting it. Only the wall colour is fixed — the studio is
+// the same room whichever record is on the turntable.
 const SKY_WALL = new Color("#171019"); // matches Scene's WALL_BG
 
-const WHITE = new Color("#ffffff"); // the cloud material's daylight tint
 const CLOUD_LIT = new Color("#f4f9ff"); // right at the bloom threshold — they glow a hair
 const CLOUD_SHADE = new Color("#b8d4ec"); // undersides — the cartoon two-tone
 const CLOUD_HAZE = new Color("#a8d8f2"); // distant puffs sink toward the sky
@@ -87,20 +89,29 @@ function SkyDome() {
   const mat = useRef<ShaderMaterial>(null);
   const uniforms = useMemo(
     () => ({
-      uTop: { value: SKY_TOP },
-      uMid: { value: SKY_MID },
-      uLow: { value: SKY_LOW },
+      // seeded from the daylight sky and then lerped every frame; the values
+      // are mutated in place, so these Colors must not be shared
+      uTop: { value: new Color(DAYLIGHT.top) },
+      uMid: { value: new Color(DAYLIGHT.mid) },
+      uLow: { value: new Color(DAYLIGHT.low) },
       uWall: { value: SKY_WALL },
       uDay: { value: 0 },
     }),
     [],
   );
+  const target = useMemo(() => new Color(), []);
 
   useFrame((_, delta) => {
     if (!mat.current) return;
-    const u = mat.current.uniforms.uDay;
-    u.value +=
-      ((clockState.wall ? 0 : 1) - u.value) * (1 - Math.exp(-3.5 * delta));
+    const u = mat.current.uniforms;
+    u.uDay.value +=
+      ((clockState.wall ? 0 : 1) - u.uDay.value) * (1 - Math.exp(-3.5 * delta));
+
+    const sky = skyFor(activeRun.record);
+    const k = 1 - Math.exp(-2.5 * delta);
+    (u.uTop.value as Color).lerp(target.set(sky.top), k);
+    (u.uMid.value as Color).lerp(target.set(sky.mid), k);
+    (u.uLow.value as Color).lerp(target.set(sky.low), k);
   });
 
   return (
@@ -187,6 +198,7 @@ interface Shape {
 function Clouds() {
   const group = useRef<Group>(null);
   const { scene } = useGLTF(CLOUDS_URL);
+  const tint = useMemo(() => new Color(), []);
 
   const material = useMemo(
     () =>
@@ -305,11 +317,12 @@ function Clouds() {
     // a drift slow enough to be felt rather than watched
     group.current.rotation.y -= delta * 0.006;
     group.current.position.y = Math.sin(clock.elapsedTime * 0.09) * 0.6;
-    // material colour multiplies the instance colours, so white is a no-op
-    // and dimming it to the room colour sinks the field into the dark on the
-    // wall — the cloud tints live in the instance colours, not here
+    // material colour multiplies the instance colours, so daylight's white is
+    // a no-op and dimming it to the room colour sinks the field into the dark
+    // on the wall — the cloud shading lives in the instance colours, not here.
+    // A record with a night sky tints the whole field through this one lerp.
     material.color.lerp(
-      clockState.wall ? SKY_WALL : WHITE,
+      clockState.wall ? SKY_WALL : tint.set(skyFor(activeRun.record).cloud),
       1 - Math.exp(-3.5 * delta),
     );
   });

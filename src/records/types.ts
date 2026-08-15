@@ -15,6 +15,21 @@ export interface NotePattern {
   lanes: [string, string, string];
 }
 
+// The sky and lighting a record plays under (records/sky.ts). Optional on a
+// record; DAYLIGHT is what the first two shipped with.
+export interface SkyPalette {
+  bg: string; // scene background behind the dome
+  top: string; // dome gradient, straight up
+  mid: string; // dome gradient, at the horizon
+  low: string; // dome gradient, far below the deck
+  cloud: string; // multiplies the cloud field's own shading — white is a no-op
+  key: string; // the sun/moon directional
+  fill: string; // the cool bounce from the other side
+  hemiSky: string;
+  hemiGround: string;
+  dim: number; // scales every light's play-time intensity
+}
+
 export interface RecordDef {
   id: string;
   title: string;
@@ -35,6 +50,8 @@ export interface RecordDef {
   // scripts/build-diorama.mjs. The island layout for this record is keyed on
   // the record id in scene/islandLayout.ts.
   dioramaModel: string;
+
+  sky?: SkyPalette; // defaults to DAYLIGHT (records/sky.ts)
 
   accentColor: string; // per-record accent: lane guides, piece rings, runner
   // headphones (spec §9) — notes use the shared palette (scene/notePalette.ts)

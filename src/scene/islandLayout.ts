@@ -211,9 +211,101 @@ const HARBOUR = island(
   "#4a93cc",
 );
 
+// --------------------------------------------------------------- the city --
+
+// A block, not a landscape — so the five tile kinds get read as city surfaces
+// rather than terrain. The lifts happen to be exactly right for it:
+//
+//   grass → concrete pavement, the default surface     (lift  0)
+//   path  → asphalt, sunk below the kerb               (lift -0.005)
+//   sand  → a painted forecourt, lower again           (lift -0.012)
+//   hill  → the podium the tower stands on             (lift +0.07)
+//   water → a canal cutting in from the north edge     (lift -0.03)
+//
+// Adding city-only kinds would mean two more dead palette entries on every
+// other island for one record's private need; the kinds are really just
+// "terrain slot with a lift and a per-island colour", and this is what that
+// abstraction is for.
+//
+// The streets are what compose this one. A main road runs clean across the
+// island, with a branch north to the canal quay and an alley south — so from
+// any angle the eye has a line to follow, which is the job the meadow's track
+// and the harbour's coastline do.
+const NEON = island(
+  {
+    // the podium, straddling the middle
+    "0,0": "hill",
+    "0,-1": "hill",
+    // the main street, edge to edge
+    "-3,1": "path",
+    "-2,1": "path",
+    "-1,1": "path",
+    "0,1": "path",
+    "1,1": "path",
+    "2,1": "path",
+    // north branch, running down to the water
+    "1,0": "path",
+    "1,-1": "path",
+    // south alley
+    "0,2": "path",
+    "-1,3": "path",
+    // the canal
+    "1,-3": "water",
+    "2,-3": "water",
+    "1,-2": "water",
+    // painted forecourt outside the food stall
+    "-1,2": "sand",
+    "-2,2": "sand",
+  },
+  {
+    tower: { q: 0, r: 0, dz: -0.01, rot: 18 },
+    // the mid-rise sits back off the street with an alley between it and the
+    // tower — buildings shoulder to shoulder on a 0.92 island just read as
+    // one lump
+    block: { q: -2, r: -1, dx: 0.02, dz: -0.02, rot: 96 },
+    dumpster: { q: -2, r: 0, dx: 0.04, dz: -0.03, rot: 104 },
+    // the sign takes the corner where the branch leaves the main street, so
+    // it's lit from the busiest part of the plate
+    neonsign: { q: 2, r: 0, dx: -0.03, dz: 0.02, rot: -34 },
+    watertower: { q: 3, r: -2, dx: -0.02, dz: 0.02, rot: 25 },
+    // Kerbside props are nudged toward the road they belong to rather than
+    // centred on their tile — a street light standing in the middle of the
+    // pavement reads as a lamp in a field.
+    // the boom arm runs out along the model's +x, so it has to be turned
+    // INWARD or it reaches out past the coast with nothing under it
+    signal: { q: 1, r: 2, dx: 0.02, dz: -0.07, rot: 0 },
+    hydrant: { q: -1, r: 0, dx: 0.03, dz: 0.06, rot: 40 },
+    lamp: { q: -2, r: 3, dx: 0.06, dz: -0.05, rot: -20 },
+    // the stall faces back across its forecourt toward the road
+    stall: { q: -1, r: 2, dx: -0.01, dz: 0.04, rot: 195 },
+    // the one prop actually standing on the asphalt, turned to run along the
+    // street (the main road runs in +x, which is 90° from the model's length)
+    taxi: { q: -1, r: 1, dx: 0.02, rot: 90 },
+  },
+  {
+    // Cool slate against the label's amber paper. The island is the dark
+    // thing on this record — everything that reads is either lit (the sign)
+    // or a bright kerbside prop, which is what a city at night actually
+    // looks like from above.
+    // The values are spread much wider than the other two islands need to be.
+    // A meadow can carry a gentle green-on-green; a city is only legible as a
+    // city if the STREETS read, and at 200px across on a turning disc that
+    // takes a hard step between asphalt and kerb, not a shade.
+    grass: "#79738c", // concrete pavement
+    hill: "#8b839f", // the podium, catching more of the key light
+    path: "#2b2833", // asphalt — the darkest thing on the plate
+    sand: "#9a8a70", // forecourt, under a sodium light
+    water: "#1a2c50", // the canal
+  },
+  // The canal shimmers violet rather than sky-blue: the only things lighting
+  // it on this record are the sign and a dusk sky.
+  "#5b6fd8",
+);
+
 const ISLANDS: Record<string, IslandDef> = {
   meadow: MEADOW,
   harbour: HARBOUR,
+  neon: NEON,
 };
 
 export const islandFor = (recordId: string): IslandDef =>

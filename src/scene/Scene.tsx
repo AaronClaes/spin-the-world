@@ -22,6 +22,7 @@ import { resolveCrossings } from "../game/run";
 import * as runState from "../game/runState";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
+import { DAYLIGHT, skyFor } from "../records/sky";
 import type { RecordDef } from "../records/types";
 import { applyStemUnlocks, swellAliveMix } from "../music/rig";
 import { CameraRig } from "./CameraRig";
@@ -95,11 +96,12 @@ function ClockDriver() {
 // hemisphere fill) so the near-black vinyl pops against the environment
 // instead of dissolving into a void. Sky and lights crossfade on the dive.
 
+//
+// The daylight half is now the record's own (records/sky.ts) — the meadow and
+// the harbour still get exactly these colours, and the city plays at dusk.
 const WALL_BG = new Color("#171019");
-const DAY_BG = new Color("#a5d9f5");
 const LAMP_KEY = new Color("#ffc98a");
-const SUN_KEY = new Color("#fff2d0");
-const keyColorTarget = new Color();
+const colorTarget = new Color();
 
 // The Canvas scene background, lerped between night void and day sky as the
 // camera flies between the wall and the record.
@@ -133,7 +135,7 @@ function Sky() {
 
   useFrame((_, delta) => {
     (scene.background as Color).lerp(
-      clockState.wall ? WALL_BG : DAY_BG,
+      clockState.wall ? WALL_BG : colorTarget.set(skyFor(activeRun.record).bg),
       1 - Math.exp(-3.5 * delta),
     );
   });
@@ -145,6 +147,7 @@ function Sky() {
 // lighting" half of spec §8.4's completion moment.
 function Lights() {
   const key = useRef<DirectionalLight>(null);
+  const fill = useRef<DirectionalLight>(null);
   const ambient = useRef<AmbientLight>(null);
   const hemi = useRef<HemisphereLight>(null);
 
@@ -153,17 +156,35 @@ function Lights() {
       useGameStore.getState().piecesCollected.length ===
       activeRun.record.worldPieces.length;
     const day = !clockState.wall;
+    const sky = skyFor(activeRun.record);
+    // A night record wants less of every light, not a different rig — the
+    // shapes and the completion swell stay the same, they're just quieter.
+    const dim = day ? sky.dim : 1;
     const k = 1 - Math.exp(-1.5 * delta);
     if (key.current) {
-      const target = day ? (alive ? 3.2 : 2.5) : 3.1;
+      const target = (day ? (alive ? 3.2 : 2.5) : 3.1) * dim;
       key.current.intensity += (target - key.current.intensity) * k;
-      key.current.color.lerp(keyColorTarget.copy(day ? SUN_KEY : LAMP_KEY), k);
+      key.current.color.lerp(
+        day ? colorTarget.set(sky.key) : colorTarget.copy(LAMP_KEY),
+        k,
+      );
+    }
+    if (fill.current) {
+      fill.current.intensity += (0.9 * dim - fill.current.intensity) * k;
+      if (day) fill.current.color.lerp(colorTarget.set(sky.fill), k);
     }
     if (ambient.current)
       ambient.current.intensity +=
-        ((day ? (alive ? 1.0 : 0.8) : 0.68) - ambient.current.intensity) * k;
-    if (hemi.current)
-      hemi.current.intensity += ((day ? 0.65 : 0) - hemi.current.intensity) * k;
+        ((day ? (alive ? 1.0 : 0.8) * dim : 0.68) - ambient.current.intensity) *
+        k;
+    if (hemi.current) {
+      hemi.current.intensity +=
+        ((day ? 0.65 * dim : 0) - hemi.current.intensity) * k;
+      if (day) {
+        hemi.current.color.lerp(colorTarget.set(sky.hemiSky), k);
+        hemi.current.groundColor.lerp(colorTarget.set(sky.hemiGround), k);
+      }
+    }
   });
 
   return (
@@ -172,8 +193,8 @@ function Lights() {
       <hemisphereLight
         ref={hemi}
         intensity={0}
-        color="#cde6f7"
-        groundColor="#d9c49a"
+        color={DAYLIGHT.hemiSky}
+        groundColor={DAYLIGHT.hemiGround}
       />
       <directionalLight
         ref={key}
@@ -182,9 +203,10 @@ function Lights() {
         color="#ffc98a"
       />
       <directionalLight
+        ref={fill}
         position={[-7, 5, -6]}
         intensity={0.9}
-        color="#6a83c9"
+        color={DAYLIGHT.fill}
       />
     </>
   );

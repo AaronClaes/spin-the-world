@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meadow } from "../records/meadow";
+import { RECORDS } from "../records";
 import type { WorldPieceDef } from "../records/types";
 import { solveChart } from "./solver";
 
@@ -42,12 +42,18 @@ describe("chart completability solver", () => {
     expect(new Set(plan as number[]).size).toBe(3);
   });
 
-  it("proves the meadow chart completable", () => {
-    const plan = solveChart(meadow.worldPieces, meadow.totalBeats);
-    expect(plan).not.toBeNull();
-    // and every catch lands before the needle reaches the label
-    for (const beat of plan as number[]) {
-      expect(beat).toBeLessThanOrEqual(meadow.totalBeats);
-    }
-  });
+  // Every record on the shelf, not just the first: a chart that can't be
+  // completed can't earn its first star, and the piece spacing is exactly the
+  // thing that gets edited when a new record is being tuned.
+  it.each(RECORDS.map((r) => [r.id, r] as const))(
+    "proves the %s chart completable",
+    (_id, record) => {
+      const plan = solveChart(record.worldPieces, record.totalBeats);
+      expect(plan).not.toBeNull();
+      // and every catch lands before the needle reaches the label
+      for (const beat of plan as number[]) {
+        expect(beat).toBeLessThanOrEqual(record.totalBeats);
+      }
+    },
+  );
 });

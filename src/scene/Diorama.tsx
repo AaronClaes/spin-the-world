@@ -10,7 +10,7 @@ import { usePropClone } from "./dioramaProps";
 import { activeFlights, FLIGHT_DURATION } from "./flights";
 import { Island } from "./Island";
 import { type IslandDef, islandFor, placementFor } from "./islandLayout";
-import { BEAM_NODE } from "./procProps";
+import { BEAM_NODE, TUBES_NODE } from "./procProps";
 
 // The tiny world on the label (spec §8.4). Three states per piece, and the
 // point of the whole game is watching a piece move through them:
@@ -285,6 +285,29 @@ function LandingDust({ bornAt }: { bornAt: { current: number | null } }) {
 
 const ALIVE_HOP = 0.55; // the coordinated hop when the tenth piece lands
 
+// Brightness of one bank of the neon sign's tubes. Four banks, each on its own
+// clock, because tubes that pulse in unison read as a dimmer being turned
+// rather than as neon. Bank 2 is the one with the failing starter — it sits
+// steady and then breaks into a stutter, and that single detail is most of
+// what makes the sign read as a sign at 60 pixels tall.
+function tubeGlow(bank: number, t: number, alive: boolean): number {
+  const speed = alive ? 1.6 : 1;
+  switch (bank) {
+    case 0:
+      return 0.72 + 0.28 * Math.sin(t * 3.1 * speed);
+    case 1:
+      return 0.68 + 0.32 * Math.sin(t * 4.7 * speed + 1.7);
+    case 2:
+      return (t * 0.45 * speed) % 1 > 0.86
+        ? Math.sin(t * 52) > 0
+          ? 1
+          : 0.12
+        : 0.85;
+    default:
+      return 0.55 + 0.45 * Math.sin(t * 2.2 * speed + 3.4);
+  }
+}
+
 function PlantedProp({
   prop,
   island,
@@ -308,6 +331,10 @@ function PlantedProp({
     [clone],
   );
   const beam = useMemo(() => clone.getObjectByName(BEAM_NODE) ?? null, [clone]);
+  const tubes = useMemo(
+    () => clone.getObjectByName(TUBES_NODE) ?? null,
+    [clone],
+  );
   const phase = useMemo(() => spot.x * 7.3 + spot.z * 4.1, [spot]);
 
   useFrame(({ clock }, delta) => {
@@ -375,6 +402,28 @@ function PlantedProp({
       case "barrel":
         // it never quite settled after being rolled off the boat
         tilt = Math.sin(now * 1.9 + phase) * 0.02;
+        break;
+
+      // ---- neon ----
+      case "neonsign":
+        // the city's answer to the sails and the beam. Each mesh carries its
+        // bank and its relative burn in userData, set where the sign is built.
+        if (tubes)
+          for (const child of tubes.children) {
+            const m = (child as Mesh).material as MeshBasicMaterial;
+            m.opacity =
+              tubeGlow(child.userData.bank as number, now, alive) *
+              (child.userData.gain as number);
+          }
+        break;
+      case "taxi":
+        // parked with the engine running — too small a movement to see as
+        // motion, which is exactly what an idling engine looks like
+        y += Math.sin(now * 9.4 + phase) * 0.0016;
+        break;
+      case "stall":
+        // the awning catches what wind gets down between the buildings
+        tilt = Math.sin(now * 2.6 + phase) * 0.022;
         break;
       default:
         break;
