@@ -4,10 +4,11 @@ import {
   pausePlayback,
   resumePlayback,
   startPlayback,
+  startPreview,
 } from "./audio/transport";
 import { clockState } from "./game/clockState";
 import { saveRunResult } from "./game/persistence";
-import { activeRun, resetActiveRun, selectRecord } from "./game/runState";
+import { activeRun, selectRecord } from "./game/runState";
 import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
 import { useLaneInput } from "./game/useLaneInput";
@@ -18,10 +19,10 @@ import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
 import { resetLastCatchColor } from "./scene/notePalette";
 import { Scene } from "./scene/Scene";
+import { Countdown } from "./ui/Countdown";
 import { DebugHud } from "./ui/DebugHud";
 import { Hud } from "./ui/Hud";
 import { PauseOverlay } from "./ui/PauseOverlay";
-import { ReadyOverlay } from "./ui/ReadyOverlay";
 import type { RunSummary } from "./ui/ResultsOverlay";
 import { ResultsOverlay } from "./ui/ResultsOverlay";
 import { StudioWall } from "./ui/StudioWall";
@@ -31,16 +32,24 @@ const NEEDLE_LIFT_MS = 1800; // let the tonearm lift before the results show
 const SHOW_DEBUG_HUD =
   typeof location !== "undefined" && location.search.includes("debug");
 
-type Phase = "wall" | "ready" | "playing" | "results";
+type Phase = "wall" | "countdown" | "playing" | "results";
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("wall");
   // The record being played. activeRun.record is the same value and is what
   // frame-rate code reads; this copy exists so React re-renders on a swap.
   const [record, setRecord] = useState<RecordDef>(DEFAULT_RECORD);
+  // The record picked off the wall but not yet committed to. Null until the
+  // first click of the session, which is what makes the preview legal to
+  // start (ui/StudioWall.tsx).
+  const [selected, setSelected] = useState<RecordDef | null>(null);
   const [paused, setPaused] = useState(false);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const resultsTimer = useRef<number | null>(null);
+  // Whether this countdown is being counted over a camera dive or from a deck
+  // the camera is already parked at — a restart shouldn't drag the whole wall
+  // back into the scene graph behind it.
+  const diving = useRef(false);
   useLaneInput();
 
   // Runs exactly once per track end (Tone scheduleOnce), so the persistence
@@ -86,48 +95,75 @@ export default function App() {
     );
   };
 
-  // Picking a record off the wall dives the camera to the turntable but
-  // doesn't drop the needle yet — the ready card (score to beat, how-to)
-  // floats over the parked disc until the player starts.
-  // Picking the record is what swaps the chart in — the ready card and the
-  // whole gameplay subtree read it from there.
-  //
-  // The store has to be cleared HERE, not in start(): the diorama renders
-  // during the ready phase, and a piecesCollected list left over from the
-  // previous record would have it trying to plant that record's props on this
-  // record's island.
-  const enterReady = useCallback((picked: RecordDef) => {
-    useGameStore.getState().resetRun();
-    clearFlights();
-    clearNotePops();
-    selectRecord(picked);
-    setRecord(picked);
-    clockState.wall = false;
-    setPhase("ready");
+  // Clicking a record on the wall only selects it. The click is the session's
+  // first user gesture, so it's also where the AudioContext unlocks and the
+  // record's own bed starts looping under the wall — selecting and hearing
+  // are the same action (audio/transport.ts startPreview).
+  const handleSelect = useCallback((picked: RecordDef) => {
+    setSelected(picked);
+    void startPreview(picked)
+      // Tone.start() has resolved — the countdown's SFX need the synths built
+      // before the first count, not at the needle drop.
+      .then(initSfx)
+      .catch(() => {
+        // an autoplay policy we didn't anticipate, or a dead AudioContext:
+        // the wall is still playable in silence, so don't take the app down
+      });
   }, []);
 
-  const start = async () => {
-    setPhase("playing");
-    setPaused(false);
-    clockState.paused = false;
-    clockState.wall = false; // no-op from ready; the replay path needs it
-    // Fresh run state — a no-op on the first play, the actual reset on replay.
-    resetActiveRun();
+  // Everything a run needs reset, done when the count starts rather than when
+  // it ends — the deck is on screen for the whole 3-2-1 and has to be showing
+  // this record's empty island, not the last one's leftovers. The music is
+  // deliberately NOT started here; that's the GO.
+  const armRun = useCallback((picked: RecordDef, dive: boolean) => {
+    if (resultsTimer.current !== null) {
+      clearTimeout(resultsTimer.current);
+      resultsTimer.current = null;
+    }
+    useGameStore.getState().resetRun();
     clearFlights();
     clearNotePops();
     resetLastCatchColor();
-    useGameStore.getState().resetRun();
-    applyStemUnlocks(0, record.stemUnlockAtPieces, true);
+    selectRecord(picked);
+    setRecord(picked);
+    applyStemUnlocks(0, picked.stemUnlockAtPieces, true);
     resetAliveMix();
     clockState.ended = false;
+    clockState.playing = false;
+    clockState.paused = false;
     clockState.beatPos = 0;
-    await startPlayback(record, handleEnded);
-    // Tone.start() has resolved inside startPlayback — safe to build SFX.
+    diving.current = dive;
+    if (dive) clockState.wall = false;
+    setPaused(false);
+    setSummary(null);
+    setPhase("countdown");
+  }, []);
+
+  const play = useCallback(() => {
+    if (selected) armRun(selected, true);
+  }, [armRun, selected]);
+
+  // Replay and restart-from-pause both count in too. The camera is already at
+  // the deck so there's no dive to count over, but a retry is the moment you
+  // most want the beat of warning — dropping straight back onto a moving
+  // record is how you lose the first four notes.
+  const restart = useCallback(() => armRun(activeRun.record, false), [armRun]);
+
+  // GO. The needle lands, the Transport rewinds out from under the preview
+  // loop that's been playing since the wall, and sfxNeedleDrop covers the seam
+  // — the jump is a needle drop, so it gets to sound like one.
+  const dropNeedle = useCallback(async () => {
+    await startPlayback(activeRun.record, handleEnded);
     initSfx();
     sfxNeedleDrop();
     sfxSpinUp();
     clockState.playing = true;
-  };
+    // handleEnded is deliberately captured once: it fires from a Transport
+    // event scheduled a whole track earlier and already reads everything it
+    // needs off activeRun and the store rather than a closure.
+  }, []);
+
+  const countedIn = useCallback(() => setPhase("playing"), []);
 
   // Pause is Transport.pause() (spec §8.8): beatPos derives from the
   // Transport, so disc, items, and music freeze together with zero state.
@@ -150,16 +186,18 @@ export default function App() {
       clearTimeout(resultsTimer.current);
       resultsTimer.current = null;
     }
-    // Transport stays paused/parked; start() rewinds it on the next needle
-    // drop. The frozen scene sits behind the wall overlay.
-    if (clockState.playing && !clockState.paused && !clockState.ended)
-      pausePlayback();
     clockState.paused = false;
     clockState.playing = false;
     clockState.wall = true;
     setPaused(false);
     setSummary(null);
     setPhase("wall");
+    // The record you were playing is the record still selected on the wall,
+    // so its bed picks straight back up — which also rewinds the Transport off
+    // whatever beat the abandoned run left it parked on.
+    const back = activeRun.record;
+    setSelected(back);
+    void startPreview(back).catch(() => {});
   }, []);
 
   // Esc toggles pause; auto-pause on tab switch — a backgrounded tab suspends
@@ -187,10 +225,14 @@ export default function App() {
       <Scene
         record={record}
         wall={phase === "wall"}
-        // stays mounted through "ready" so the dive pulls away from a real
-        // wall instead of a void
-        wallMounted={phase === "wall" || phase === "ready"}
-        onStart={enterReady}
+        // stays mounted while the count is being flown so the dive pulls away
+        // from a real wall instead of a void — but not for a restart, where
+        // the camera never left the deck
+        wallMounted={
+          phase === "wall" || (phase === "countdown" && diving.current)
+        }
+        selectedId={selected?.id ?? null}
+        onSelect={handleSelect}
       />
       {/* CSS shows this only on portrait touch devices (spec §9: landscape) */}
       <div className="rotate-hint">
@@ -206,17 +248,21 @@ export default function App() {
           <Hud onPause={pause} />
         </>
       )}
-      {phase === "wall" && <StudioWall />}
-      {phase === "ready" && (
-        <ReadyOverlay onStart={start} onBack={backToWall} />
+      {phase === "wall" && <StudioWall selected={selected} onPlay={play} />}
+      {phase === "countdown" && (
+        <Countdown record={record} onGo={dropNeedle} onDone={countedIn} />
       )}
       {phase === "playing" && paused && (
-        <PauseOverlay onResume={resume} onRestart={start} onWall={backToWall} />
+        <PauseOverlay
+          onResume={resume}
+          onRestart={restart}
+          onWall={backToWall}
+        />
       )}
       {phase === "results" && summary && (
         <ResultsOverlay
           summary={summary}
-          onReplay={start}
+          onReplay={restart}
           onWall={backToWall}
         />
       )}

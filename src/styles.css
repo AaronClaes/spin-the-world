@@ -402,6 +402,26 @@ canvas {
   gap: 14px;
 }
 
+/* Before anything is picked. It's a prompt, not a label — and it's the only
+   thing in the foot, so the absence of the play button is itself the
+   instruction: there is nothing to play until you choose something. */
+.wall-prompt {
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+/* The commit. Sits in the foot where the prompt was, so choosing a record
+   swaps the sentence for the button rather than adding one. pointer-events
+   have to come back on — .overlay.wall drops them so clicks reach the
+   records behind it. */
+.overlay .play-button {
+  margin: 0;
+  padding: 15px 44px;
+  font-size: 1.2rem;
+  pointer-events: auto;
+  animation: pop-in 0.32s cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
+}
+
 /* plaques render inside the 3D scene via drei <Html> */
 .plaque-html {
   pointer-events: none;
@@ -411,6 +431,14 @@ canvas {
   white-space: nowrap;
   text-align: center;
   line-height: 1.5;
+}
+
+/* The selected record's plaque warms up. The frame lifting and the record
+   turning already say which one is chosen; this is the part that still works
+   for a record you haven't finished, where there's no disc to spin. */
+.plaque.selected .plaque-title {
+  color: #ffe9b8;
+  text-shadow: 0 0 14px rgba(255, 201, 138, 0.45);
 }
 
 /* Weighted up because the rest of the game is: every other number and label
@@ -665,58 +693,74 @@ canvas {
   box-shadow: none;
 }
 
-/* ------------------------------------------------- the ready card ------- */
-/* The breath before the needle drops: the camera has already dived to the
-   turntable and the disc sits parked behind this translucent card. */
+/* -------------------------------------------------- the count-in ------- */
+/* The 3-2-1 over the dive. No scrim: the point of counting over the flight
+   rather than after it is that you watch the deck arrive, so nothing may sit
+   between the camera and the turntable. The numbers carry their own shadow
+   instead (ui/Countdown.tsx). */
 
-.overlay.ready {
-  background: rgba(10, 12, 20, 0.45);
-}
-
-.overlay.ready h1 {
-  color: #ffe9b8;
-}
-
-.overlay.ready .verdict strong {
-  color: #ffd27a;
-  font-weight: 800;
-}
-
-.howto {
-  list-style: none;
+.countdown {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 10px 0 6px;
-  max-width: 460px;
-  padding: 0 16px;
-  text-align: center;
-  line-height: 1.35;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-/* a small dot between the lines — works with the keys/touch swap because a
-   hidden line never renders its ::before */
-.howto li + li::before {
-  content: "•";
-  display: block;
-  margin-bottom: 8px;
+/* Sized in vmin so the count is the same portion of a phone screen as of a
+   monitor — it's the one piece of type in the game that's pure spectacle. */
+.count {
+  font-size: 16vmin;
+  font-weight: 800;
+  line-height: 1;
+  color: #ffe9b8;
+  text-shadow:
+    0 4px 0 rgba(58, 44, 18, 0.55),
+    0 0 40px rgba(255, 201, 138, 0.5);
+  animation: count-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.count.go {
   color: #ffd27a;
-  font-size: 0.85rem;
-  text-shadow: 0 0 6px rgba(255, 210, 122, 0.5);
+  font-size: 20vmin;
+  letter-spacing: 0.04em;
+  animation: count-go 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
-/* show the lane-switch line that matches the input device */
-.howto .touch {
-  display: none;
-}
-
-@media (hover: none) {
-  .howto .keys {
-    display: none;
+/* Each number lands hard and settles, so the beat reads as a hit even with
+   the sound off. */
+@keyframes count-pop {
+  0% {
+    opacity: 0;
+    transform: scale(1.9);
   }
+  55% {
+    opacity: 1;
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 
-  .howto .touch {
-    display: block;
+/* GO goes the other way — it opens out instead of dropping in, because the
+   record is already moving underneath it. */
+@keyframes count-go {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .count,
+  .count.go {
+    animation: none;
   }
 }
 
@@ -1179,11 +1223,6 @@ canvas {
 
   .score-bar {
     margin: 6px auto 4px;
-  }
-
-  .howto {
-    gap: 5px;
-    font-size: 0.85rem;
   }
 }
 

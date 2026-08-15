@@ -6,6 +6,7 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
+import { getTransport } from "tone";
 import { Suspense, useMemo, useRef } from "react";
 import type { AmbientLight, DirectionalLight, HemisphereLight } from "three";
 import { Color, Vector3 } from "three";
@@ -137,10 +138,14 @@ function Sky() {
         __cam: unknown;
         __store: unknown;
         __run: unknown;
+        __transport: unknown;
       };
       w.__scene = scene;
       w.__cam = camera;
       w.__store = useGameStore;
+      // The clock, for the same reason: whether the wall preview is actually
+      // running is otherwise unobservable from outside the audio graph.
+      w.__transport = getTransport();
       // the namespace object, not activeRun itself — it's reassigned on every
       // record pick and replay, and a live binding only survives on the module
       w.__run = runState;
@@ -248,12 +253,14 @@ export function Scene({
   record,
   wall,
   wallMounted,
-  onStart,
+  selectedId,
+  onSelect,
 }: {
   record: RecordDef; // the pick — only used to key the gameplay subtree
   wall: boolean; // wall look (post stack) — true only on the title screen
   wallMounted: boolean; // wall geometry in the tree — also true mid-dive
-  onStart: (record: RecordDef) => void;
+  selectedId: string | null; // the frame that's lifted, spinning and audible
+  onSelect: (record: RecordDef) => void;
 }) {
   return (
     <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
@@ -280,7 +287,9 @@ export function Scene({
         </Suspense>
       </group>
       <Suspense fallback={null}>
-        {wallMounted && <WallScene onStart={onStart} />}
+        {wallMounted && (
+          <WallScene selectedId={selectedId} onSelect={onSelect} />
+        )}
       </Suspense>
 
       {/* subtle post stack (spec §9): bloom for the emissive accents, ACES

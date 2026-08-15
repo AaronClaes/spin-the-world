@@ -27,7 +27,10 @@ in the same order as the wall.
 
 ## How to play
 
-Click a record on the studio wall to drop the needle. **← → (or A/D)** switch
+Click a record on the studio wall to select it — it lifts off the wall, starts
+turning, and its own rhythm bed starts playing under the room. **Play** drops
+the needle, and the camera dives to the deck over a 3-2-1 counted on that
+record's tempo. **← → (or A/D)** switch
 grooves — on touch, tap the left/right half of the screen. Catch the notes for
 score and combo; catch the world pieces to build the tiny world on the label.
 Missed pieces come back around next revolution, but the needle is spiralling

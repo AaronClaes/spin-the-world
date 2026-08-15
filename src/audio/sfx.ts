@@ -136,6 +136,26 @@ export function sfxNoteMiss() {
   safely(() => tick?.triggerAttackRelease("32n", t, 0.4));
 }
 
+// The 3-2-1 before the needle drops. Pitched out of the mounted record's own
+// voicing like everything else in this file, so the count belongs to the
+// record you picked rather than sitting on top of it: three taps on the root
+// of its run, then the piece chime's arpeggio on GO with a thump underneath.
+// step 3/2/1 counts; step 0 is GO.
+export function sfxCount(step: number) {
+  if (!pluck || !chime || !thump) return;
+  const { pickupRun, pieceChime, pieceThump } = songVoicing();
+  const t = Tone.now();
+  safely(() => {
+    if (step > 0) {
+      pluck?.triggerAttackRelease(pickupRun[0], "16n", t, 0.6);
+      return;
+    }
+    thump?.triggerAttackRelease(pieceThump, "8n", t, 0.7);
+    chime?.triggerAttackRelease(pieceChime[0], "8n", t, 0.75);
+    chime?.triggerAttackRelease(pieceChime[2], "4n", t + 0.04, 0.7);
+  });
+}
+
 // World piece pickup: chime plus a low thump (spec §8.5).
 export function sfxPiecePickup() {
   if (!chime || !thump) return;

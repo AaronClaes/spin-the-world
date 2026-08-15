@@ -156,7 +156,6 @@ function ringGeometry(outer: number, inner: number, depth: number, bevel = 0) {
 const MOULD_GEO = ringGeometry(FRAME_SIZE - 0.04, OPENING, MOULD_DEPTH, BEVEL);
 const LIP_GEO = ringGeometry(FRAME_SIZE, FRAME_SIZE - 0.09, 0.05, 0.009);
 
-
 // --------------------------------------------------------------- soft quads --
 
 const quadVert = /* glsl */ `
@@ -489,13 +488,25 @@ function WallProp({
 
 // The completed record, hanging: the game disc at trophy scale, label facing
 // out, turning slowly with its world alive on it.
-function HangingRecord({ record }: { record: RecordDef }) {
+function HangingRecord({
+  record,
+  spinning,
+}: {
+  record: RecordDef;
+  spinning: boolean;
+}) {
   const spin = useRef<Group>(null);
+  const rate = useRef(0);
   const props = record.worldPieces.map((p) => p.prop);
   const island = islandFor(record.id);
 
+  // Only the selected record turns, and it spins up and coasts down rather
+  // than snapping — which makes the wall's motion say the same thing the wall's
+  // sound says. The one that's moving is the one you're hearing.
   useFrame((_, delta) => {
-    if (spin.current) spin.current.rotation.y += delta * 0.22;
+    rate.current +=
+      ((spinning ? 0.22 : 0) - rate.current) * (1 - Math.exp(-2.2 * delta));
+    if (spin.current) spin.current.rotation.y += delta * rate.current;
   });
 
   return (
@@ -682,18 +693,24 @@ function useHoverRelease() {
 
 function RecordFrame({
   record,
-  onStart,
+  selected,
+  onSelect,
 }: {
   record: RecordDef;
-  onStart: (record: RecordDef) => void;
+  selected: boolean;
+  onSelect: (record: RecordDef) => void;
 }) {
   const progress = loadProgress(record.id);
   const group = useRef<Group>(null);
 
+  // Selection and hover both lift the frame off the wall, and they add: the
+  // selected record sits proud of the row whether or not you're pointing at
+  // it, and still answers the pointer when you come back to it.
   useFrame((_, delta) => {
     if (!group.current) return;
     const k = 1 - Math.exp(-12 * delta);
-    const s = hoverState.id === record.id ? 1.05 : 1;
+    const s =
+      1 + (selected ? 0.06 : 0) + (hoverState.id === record.id ? 0.04 : 0);
     group.current.scale.x += (s - group.current.scale.x) * k;
     group.current.scale.y = group.current.scale.x;
     group.current.scale.z = group.current.scale.x;
@@ -714,13 +731,11 @@ function RecordFrame({
         position-z={FRONT_Z + 0.02}
         onPointerOver={() => takeHover(record.id)}
         onPointerOut={() => releaseHover(record.id)}
-        onClick={() => {
-          // the camera leaves, the pointer doesn't — so nothing would ever
-          // fire the `out` for the frame you just picked, and the cursor
-          // would stay a pointer over the ready card
-          releaseHover();
-          onStart(record);
-        }}
+        // A click only selects. Nothing here leaves the wall — the camera
+        // stays put and the pointer stays on the frame, so hover is left
+        // alone: it's still true, and releasing it would drop the frame back
+        // out of its hover lift with the pointer sitting on top of it.
+        onClick={() => onSelect(record)}
       >
         <planeGeometry args={[FRAME_SIZE, FRAME_SIZE]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -729,7 +744,7 @@ function RecordFrame({
       <Frame
         lit
         plaque={
-          <div className="plaque">
+          <div className={`plaque${selected ? " selected" : ""}`}>
             <div className="plaque-title">{record.title}</div>
             <div className={`plaque-badge ${record.difficulty}`}>
               {record.difficulty}
@@ -753,7 +768,7 @@ function RecordFrame({
         }
       >
         {progress.completed ? (
-          <HangingRecord record={record} />
+          <HangingRecord record={record} spinning={selected} />
         ) : (
           <Sleeve record={record} />
         )}
@@ -763,9 +778,11 @@ function RecordFrame({
 }
 
 export function WallScene({
-  onStart,
+  selectedId,
+  onSelect,
 }: {
-  onStart: (record: RecordDef) => void;
+  selectedId: string | null;
+  onSelect: (record: RecordDef) => void;
 }) {
   const size = useThree((s) => s.size);
   useHoverRelease();
@@ -800,7 +817,11 @@ export function WallScene({
               position-x={(i - (SLOTS - 1) / 2) * FRAME_STEP}
             >
               {record ? (
-                <RecordFrame record={record} onStart={onStart} />
+                <RecordFrame
+                  record={record}
+                  selected={record.id === selectedId}
+                  onSelect={onSelect}
+                />
               ) : (
                 <Frame
                   lit={false}

@@ -6,6 +6,7 @@ import { songFor } from "../music";
 import { islandFor } from "../scene/islandLayout";
 import { DRESSING } from "../scene/neonDressing";
 import { PROC_PROPS } from "../scene/procProps";
+import { countStepMs } from "../ui/Countdown";
 import { DEFAULT_RECORD, RECORDS, recordById } from ".";
 
 // Root node names in a .glb, read straight out of the embedded JSON chunk.
@@ -48,6 +49,20 @@ describe("the shelf", () => {
     const bpms = RECORDS.map((r) => r.bpm);
     expect(bpms).toEqual([...bpms].sort((a, b) => a - b));
   });
+
+  // The count-in is metered to the record rather than to seconds, which is
+  // what makes 140 BPM feel faster than 100 before a note is played — but it
+  // also means the shelf's tempo range silently sets how long the player waits
+  // to start. Press a 180 BPM record and 3-2-1-GO is a 2s blur; press a 70 BPM
+  // one and it's a five-second stare at a parked deck.
+  it.each(RECORDS.map((r) => [r.id, r] as const))(
+    "%s counts in at a legible speed",
+    (_id, record) => {
+      const step = countStepMs(record.bpm);
+      expect(step).toBeGreaterThanOrEqual(700);
+      expect(step).toBeLessThanOrEqual(1400);
+    },
+  );
 
   it.each(RECORDS.map((r) => [r.id, r] as const))(
     "%s passes chart validation",
