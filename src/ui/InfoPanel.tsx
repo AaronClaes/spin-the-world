@@ -55,7 +55,7 @@ export function InfoPanel({ onClose }: Props) {
           <div>
             <dt>Runner</dt>
             <dd>
-              the Rogue from the{" "}
+              the Rogue, with the Ranger's head, from the{" "}
               <a
                 href="https://kaylousberg.itch.io/kaykit-adventurers"
                 target="_blank"

@@ -43,7 +43,21 @@ const KEEP_ANIMATIONS = new Set(["Running_A", "Idle", "Cheer"]);
 // directly behind — where this game sits for 88 seconds — is a green slab
 // covering the tunic, the belt, the boots and both legs. Everything that makes
 // the Rogue read as a person in clothes is behind it.
-const DROP_NODES = new Set(["Rogue_Cape"]);
+const DROP_NODES = new Set(["Rogue_Cape", "Rogue_Head"]);
+
+// The head comes off the Ranger. The Rogue's own hair is long enough to hang
+// past the jaw, which from behind is a curtain the ear cups disappear into;
+// the Ranger's is short and swept back, and his skull is ±0.543 wide against
+// the Rogue's ±0.582 — the width the headphones were sized for in the first
+// place. It has to be the whole head, not the hair: the two heads share zero
+// vertices, so there is no common skull to graft a hairstyle onto, and face,
+// hair and neck are one primitive anyway. His face comes along with it, which
+// costs nothing in a game that only ever sees the back of it.
+const HEAD = {
+  file: "assets-src/runner-ranger-original.glb",
+  node: "Ranger_Head",
+  parent: "Rig_Medium",
+};
 
 const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
 const url = (name) => new URL(`../${name}`, import.meta.url).pathname;
@@ -99,6 +113,53 @@ for (const node of root.listNodes()) {
     node.dispose();
   }
 }
+
+// Graft the Ranger's head onto the Rogue's skeleton. Every bone's inverse
+// bind matrix is identical between the two files — same rig, same rest pose —
+// so the only thing standing between them is joint ORDER, which differs per
+// character. Remap JOINTS_0 through the bone names and the head binds to the
+// body's own skin exactly as its original did.
+const preHead = {
+  nodes: new Set(root.listNodes()),
+  scenes: new Set(root.listScenes()),
+  skins: new Set(root.listSkins()),
+  meshes: new Set(root.listMeshes()),
+};
+const headDonor = await io.read(url(HEAD.file));
+mergeDocuments(doc, headDonor);
+
+const headNode = root
+  .listNodes()
+  .find((n) => !preHead.nodes.has(n) && n.getName() === HEAD.node);
+const bodySkin = [...preHead.skins][0];
+const donorJoints = headNode.getSkin().listJoints();
+const bodyIndexOf = new Map(
+  bodySkin.listJoints().map((j, i) => [j.getName(), i]),
+);
+const remap = donorJoints.map((j) => {
+  const i = bodyIndexOf.get(j.getName());
+  if (i === undefined) throw new Error(`no ${j.getName()} on the body's rig`);
+  return i;
+});
+
+for (const prim of headNode.getMesh().listPrimitives()) {
+  const joints = prim.getAttribute("JOINTS_0");
+  const array = joints.getArray();
+  for (let i = 0; i < array.length; i++) array[i] = remap[array[i]];
+  joints.setArray(array);
+}
+headNode.setSkin(bodySkin);
+ownNodes.get(HEAD.parent).addChild(headNode);
+
+// and the rest of the Ranger goes the way of the knight
+for (const scene of root.listScenes())
+  if (!preHead.scenes.has(scene) && !ownScenes.has(scene)) scene.dispose();
+for (const skin of root.listSkins())
+  if (!preHead.skins.has(skin)) skin.dispose();
+for (const mesh of root.listMeshes())
+  if (!preHead.meshes.has(mesh) && mesh !== headNode.getMesh()) mesh.dispose();
+for (const node of root.listNodes())
+  if (!preHead.nodes.has(node) && node !== headNode) node.dispose();
 
 await doc.transform(
   dedup(),

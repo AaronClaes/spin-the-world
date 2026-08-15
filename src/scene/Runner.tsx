@@ -10,15 +10,16 @@ import { bandCenter, laneRadius } from "../game/geometry";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
 
-// The listener (spec §8.2): KayKit's Rogue on KayKit's rig (CC0, Kay
-// Lousberg), assembled by scripts/build-runner.mjs — cape dropped, three clips
-// kept. A tunic, a belt and boots read as ordinary clothes from behind, which
-// is the only angle this game ever sees. The oversized headphones are built
+// The listener (spec §8.2): KayKit's Rogue wearing the Ranger's head (CC0,
+// Kay Lousberg), assembled by scripts/build-runner.mjs — cape dropped, three
+// clips kept. A tunic, a belt and boots read as ordinary clothes from behind,
+// which is the only angle this game ever sees, and the Ranger's short hair
+// leaves the ear cups somewhere to sit. The oversized headphones are built
 // here from primitives and portalled onto the head bone so they follow the
 // animation. At ~130px tall the silhouette and the accent colour do all the
 // work.
 
-// Character is ~2.18 units tall in the GLB; scale to sit small on a radius-5 disc.
+// Character is ~2.28 units tall in the GLB; scale to sit small on a radius-5 disc.
 const RUNNER_SCALE = 0.2;
 
 // Surface speed (ω·r, game units/s) at which the run clip plays at

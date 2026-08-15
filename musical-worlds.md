@@ -299,7 +299,9 @@ No state machine, no blending. A `"idle" | "run" | "cheer"` string decides which
 
 Flat-shade to match everything else — the pack's own atlas counts, it's flat swatches, and it's what the diorama props already use. Keeping it matters on a character with hair, because head, hair and face are one primitive sharing one material: repaint that flat and you shave him bald. Contact shadow is a dark ellipse sprite on the disc surface, not a shadow map.
 
-**Judge every mesh from behind.** That's the only angle this game has. The Rogue ships with a full-length cape, which from the front is a silhouette and from directly behind is a sheet covering the tunic, belt, boots and both legs — every part of him that says "person out for a run" rather than "adventurer". Drop it in the build.
+**Judge every mesh from behind.** That's the only angle this game has. The Rogue ships with a full-length cape, which from the front is a silhouette and from directly behind is a sheet covering the tunic, belt, boots and both legs — every part of him that says "person out for a run" rather than "adventurer". Drop it in the build. Same reasoning puts the Ranger's head on him: the Rogue's own hair hangs past the jaw and the ear cups vanish into it, and the head is the one mesh the headphones have to share a silhouette with.
+
+Mixing parts across characters in this pack is a name-lookup, not modelling. Every bone's inverse bind matrix is identical between files, so a head binds to another character's skin once `JOINTS_0` is remapped through the bone names — the joint _order_ is the only thing that differs. What can't be mixed is anything finer than a whole mesh: no two characters share a single vertex, so there's no common skull to graft a hairstyle onto, and face, hair and neck are one primitive on one material regardless.
 
 ### 8.3 Tonearm
 
