@@ -585,12 +585,18 @@ function HangingRecord({
 // The uncompleted record hangs as its sleeve: a kraft jacket, die-cut so the
 // vinyl and label show through. Sized and leaned exactly like the record it
 // replaces, so finishing a run swaps one object for another in the same mount
-// rather than rearranging the frame. The only colour on it is the record's own
-// accent, printed across the foot — the three sleeves have to be told apart
-// from across the room, and there's no diorama on them yet to do it.
+// rather than rearranging the frame.
+//
+// Deliberately unprinted. It used to carry the record's accent across the
+// foot, on the argument that the three sleeves have to be told apart from
+// across the room — but the plaque under each frame already names the record
+// and colour-codes its difficulty, so the band was answering a question that
+// was never asked. What it did instead was put three saturated horizontal bars
+// in a lamp-lit room of browns, and a saturated bar under a light reads as a
+// light. Kraft on a wall of kraft is the point: nothing here is finished yet.
 const SLEEVE = MINI_R * 2.06;
 
-function Sleeve({ record }: { record: RecordDef }) {
+function Sleeve() {
   return (
     <>
       <Soft
@@ -610,14 +616,10 @@ function Sleeve({ record }: { record: RecordDef }) {
           <planeGeometry args={[SLEEVE, SLEEVE]} />
           <meshStandardMaterial color="#6b5942" roughness={0.95} />
         </mesh>
-        {/* printed panel, then the accent band across the foot */}
+        {/* the printed panel inset from the jacket's edge */}
         <mesh position-z={0.001}>
           <planeGeometry args={[SLEEVE - 0.11, SLEEVE - 0.11]} />
           <meshStandardMaterial color="#5b4a36" roughness={0.95} />
-        </mesh>
-        <mesh position={[0, -SLEEVE * 0.36, 0.002]}>
-          <planeGeometry args={[SLEEVE - 0.11, 0.045]} />
-          <meshStandardMaterial color={record.accentColor} roughness={0.85} />
         </mesh>
         {/* the die cut, and what shows through it */}
         <mesh position-z={0.004}>
@@ -759,7 +761,7 @@ function RecordFrame({
         {progress.completed ? (
           <HangingRecord record={record} spinning={selected} />
         ) : (
-          <Sleeve record={record} />
+          <Sleeve />
         )}
       </Frame>
     </group>
