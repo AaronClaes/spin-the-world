@@ -81,7 +81,7 @@ export function InfoPanel({ onClose }: Props) {
             </dd>
           </div>
           <div>
-            <dt>Sheep &amp; bushes</dt>
+            <dt>Sheep, bushes &amp; clouds</dt>
             <dd>
               by{" "}
               <a

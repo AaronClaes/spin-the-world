@@ -36,6 +36,7 @@ import { NotePop, launchNotePop } from "./NotePop";
 import { setLastCatchColor } from "./notePalette";
 import { launchFlight } from "./flights";
 import { Runner } from "./Runner";
+import { SkyWorld } from "./SkyWorld";
 import { Tonearm } from "./Tonearm";
 import { Turntable } from "./Turntable";
 import { WALL_CAM_POS, WallScene } from "./WallScene";
@@ -243,6 +244,7 @@ export function Scene({
   return (
     <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
       <Sky />
+      <SkyWorld />
 
       <ClockDriver />
       <CameraRig />

@@ -37,5 +37,5 @@ as-is to Vercel or Netlify, no server or config needed.
 - Music: sequenced with [Tone.js](https://tonejs.github.io/)
 - Runner: based on the Knight from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: flat repaint, headphones added, see `scripts/build-runner.mjs`)
 - Diorama props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) by Kay Lousberg — CC0 (windmill, home, well, trees, stone fence, wheelbarrow, waterlily)
-- Sheep and flower bushes by [Quaternius](https://quaternius.com/) — CC0 (via [poly.pizza](https://poly.pizza/))
+- Sheep, flower bushes, and sky clouds by [Quaternius](https://quaternius.com/) — CC0 (via [poly.pizza](https://poly.pizza/))
 - Kitbash sources live in `assets-src/`; `scripts/build-diorama.mjs` merges them into `public/models/meadow-diorama.glb`

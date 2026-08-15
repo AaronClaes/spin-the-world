@@ -320,10 +320,13 @@ canvas {
   outline-offset: 3px;
 }
 
+/* The menu is shrink-to-fit, so it takes the width of its widest button and
+   stretch hands that width to all of them — a stacked menu reads as one
+   block of controls, not a ragged pile. */
 .overlay .menu {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
 }
 
