@@ -8,7 +8,7 @@ import {
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useMemo, useRef } from "react";
 import type { AmbientLight, DirectionalLight, HemisphereLight } from "three";
-import { Color } from "three";
+import { Color, Vector3 } from "three";
 import {
   sfxNoteMiss,
   sfxNotePickup,
@@ -101,6 +101,20 @@ function ClockDriver() {
 // the harbour still get exactly these colours, and the city plays at dusk.
 const WALL_BG = new Color("#171019");
 const LAMP_KEY = new Color("#ffc98a");
+// The studio is lit with the same three-light rig as the game — ambient,
+// hemisphere, key — rather than its own. That's the whole reason the wall can
+// be matte: one shared directional shades three identical frames identically,
+// with no specular for them to disagree about, which is what the per-frame area
+// lights used to be buying (scene/WallScene.tsx).
+const LAMP_HEMI_SKY = new Color("#ffd7a2");
+const LAMP_HEMI_GROUND = new Color("#4a3423");
+const DAY_KEY_POS = new Vector3(6, 8, 4);
+// Dead centre in x, and that is the whole reason it's here. Even a matte
+// surface keeps a broad view-dependent lobe, so an off-centre key hands the
+// three frames three different amounts of it — measured at 36 / 50 / 60 across
+// the row before this, left to right, which is a milder version of the very
+// complaint the wall was rebuilt to answer. Straight on, the row is symmetric.
+const WALL_KEY_POS = new Vector3(0, 5.5, 9);
 const colorTarget = new Color();
 
 // The Canvas scene background, lerped between night void and day sky as the
@@ -162,14 +176,17 @@ function Lights() {
     const dim = day ? sky.dim : 1;
     const k = 1 - Math.exp(-1.5 * delta);
     if (key.current) {
-      // the wall's key is only a bounce now — its picture lamps do the real
-      // work, and a strong global key flattened them back out (WallScene.tsx)
-      const target = (day ? (alive ? 3.2 : 2.5) : 1.1) * dim;
+      const target = (day ? (alive ? 3.2 : 2.5) : 2.2) * dim;
       key.current.intensity += (target - key.current.intensity) * k;
       key.current.color.lerp(
         day ? colorTarget.set(sky.key) : colorTarget.copy(LAMP_KEY),
         k,
       );
+      // The key swings round to the front for the wall. Everything in the
+      // studio is a surface facing the camera, and the play key comes from
+      // over the player's right shoulder — at that angle a frame's face
+      // catches 0.37 of it and the whole room renders like it's switched off.
+      key.current.position.lerp(day ? DAY_KEY_POS : WALL_KEY_POS, k);
     }
     if (fill.current) {
       fill.current.intensity += (0.9 * dim - fill.current.intensity) * k;
@@ -177,17 +194,21 @@ function Lights() {
     }
     if (ambient.current)
       ambient.current.intensity +=
-        // the wall's fill is ambient on purpose: it's the one light that lifts
-        // the mount board without leaving a second reflection in the lacquer
-        ((day ? (alive ? 1.0 : 0.8) * dim : 0.62) - ambient.current.intensity) *
+        ((day ? (alive ? 1.0 : 0.8) * dim : 0.5) - ambient.current.intensity) *
         k;
     if (hemi.current) {
       hemi.current.intensity +=
-        ((day ? 0.65 * dim : 0) - hemi.current.intensity) * k;
-      if (day) {
-        hemi.current.color.lerp(colorTarget.set(sky.hemiSky), k);
-        hemi.current.groundColor.lerp(colorTarget.set(sky.hemiGround), k);
-      }
+        ((day ? 0.65 : 0.55) * (day ? dim : 1) - hemi.current.intensity) * k;
+      hemi.current.color.lerp(
+        day ? colorTarget.set(sky.hemiSky) : colorTarget.copy(LAMP_HEMI_SKY),
+        k,
+      );
+      hemi.current.groundColor.lerp(
+        day
+          ? colorTarget.set(sky.hemiGround)
+          : colorTarget.copy(LAMP_HEMI_GROUND),
+        k,
+      );
     }
   });
 
@@ -265,15 +286,18 @@ export function Scene({
       {/* subtle post stack (spec §9): bloom for the emissive accents, ACES
           tone mapping. On the wall the vignette keeps the lamp-lit room
           feel; in daylight it eases way off and the bloom threshold rises
-          above the bright sky so the sky itself never glows */}
+          above the bright sky so the sky itself never glows.
+          The two halves are graded much closer than they were — a heavy
+          vignette is a lens artefact, and it was one of the things making the
+          studio look like a photograph of somewhere the game isn't. */}
       <EffectComposer>
         <Bloom
-          intensity={wall ? 0.45 : 0.35}
-          luminanceThreshold={wall ? 0.82 : 0.92}
+          intensity={wall ? 0.4 : 0.35}
+          luminanceThreshold={wall ? 0.88 : 0.92}
           luminanceSmoothing={0.2}
           mipmapBlur
         />
-        <Vignette offset={wall ? 0.24 : 0.12} darkness={wall ? 0.42 : 0.22} />
+        <Vignette offset={wall ? 0.14 : 0.12} darkness={wall ? 0.2 : 0.22} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </Canvas>
