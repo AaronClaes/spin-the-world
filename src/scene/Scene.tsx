@@ -91,13 +91,13 @@ function ClockDriver() {
   return null;
 }
 
-// Two lighting worlds: the studio wall stays a lamp-lit room (amber key,
-// low ambient — the look is locked), while the game plays in cartoon
-// daylight — bright sky background, sunlight key, hemisphere fill — so the
-// near-black vinyl pops against the environment instead of dissolving into
-// a void. Both the sky and the lights crossfade on the needle-drop dive.
+// Two lighting worlds: the studio wall is a lamp-lit room — warm and lit
+// enough to feel like somewhere you'd hang out, not a basement — while the
+// game plays in cartoon daylight (bright sky background, sunlight key,
+// hemisphere fill) so the near-black vinyl pops against the environment
+// instead of dissolving into a void. Sky and lights crossfade on the dive.
 
-const WALL_BG = new Color("#0a0c14");
+const WALL_BG = new Color("#171019");
 const DAY_BG = new Color("#a5d9f5");
 const LAMP_KEY = new Color("#ffc98a");
 const SUN_KEY = new Color("#fff2d0");
@@ -143,20 +143,20 @@ function Lights() {
     const day = !clockState.wall;
     const k = 1 - Math.exp(-1.5 * delta);
     if (key.current) {
-      const target = day ? (alive ? 3.2 : 2.5) : 2.7;
+      const target = day ? (alive ? 3.2 : 2.5) : 3.1;
       key.current.intensity += (target - key.current.intensity) * k;
       key.current.color.lerp(keyColorTarget.copy(day ? SUN_KEY : LAMP_KEY), k);
     }
     if (ambient.current)
       ambient.current.intensity +=
-        ((day ? (alive ? 1.0 : 0.8) : 0.45) - ambient.current.intensity) * k;
+        ((day ? (alive ? 1.0 : 0.8) : 0.68) - ambient.current.intensity) * k;
     if (hemi.current)
       hemi.current.intensity += ((day ? 0.65 : 0) - hemi.current.intensity) * k;
   });
 
   return (
     <>
-      <ambientLight ref={ambient} intensity={0.45} />
+      <ambientLight ref={ambient} intensity={0.68} />
       <hemisphereLight
         ref={hemi}
         intensity={0}
@@ -266,12 +266,12 @@ export function Scene({
           above the bright sky so the sky itself never glows */}
       <EffectComposer>
         <Bloom
-          intensity={wall ? 0.5 : 0.35}
-          luminanceThreshold={wall ? 0.75 : 0.92}
+          intensity={wall ? 0.45 : 0.35}
+          luminanceThreshold={wall ? 0.82 : 0.92}
           luminanceSmoothing={0.2}
           mipmapBlur
         />
-        <Vignette offset={wall ? 0.2 : 0.12} darkness={wall ? 0.55 : 0.22} />
+        <Vignette offset={wall ? 0.24 : 0.12} darkness={wall ? 0.42 : 0.22} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </Canvas>

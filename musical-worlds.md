@@ -1,6 +1,6 @@
-# Locked Groove — build spec
+# Spin the World — build spec
 
-Working title. A "locked groove" is the endless loop cut into the run-out of a vinyl record, which is a decent name for a game about running in circles on a record.
+The title says the whole game in three plain words: the record spins, and a world appears on the label. No vinyl vocabulary required to get the joke.
 
 **Three.js Game Jam entry — theme: Tiny Worlds**
 7-day jam. Scope is fixed and small on purpose; see §4 and §11.

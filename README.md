@@ -1,4 +1,4 @@
-# Locked Groove
+# Spin the World
 
 Three.js Game Jam entry — theme: **Tiny Worlds**.
 

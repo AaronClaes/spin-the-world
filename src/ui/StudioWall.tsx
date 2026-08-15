@@ -1,14 +1,19 @@
+import { useState } from "react";
+import { InfoPanel } from "./InfoPanel";
+
 // The studio wall IS the title screen (spec §8.7). The wall, frames, and
 // records are real 3D now (scene/WallScene.tsx) — a completed record hangs
 // as the actual vinyl with its tiny world alive on the label. This overlay
-// only carries the type: title, input hints, credits. It must not eat
-// pointer events; the record on the wall is the button, and clicking it is
-// the user gesture that unlocks the AudioContext.
+// only carries the type: title, input hints, and the ⓘ that opens the
+// credits. It must not eat pointer events; the record on the wall is the
+// button, and clicking it is the user gesture that unlocks the AudioContext.
 export function StudioWall() {
+  const [info, setInfo] = useState(false);
+
   return (
     <div className="overlay wall">
       <header className="wall-head">
-        <h1>Locked Groove</h1>
+        <h1>Spin the World</h1>
         <p>
           Every record holds a tiny world. Run the groove, play it into
           existence.
@@ -24,36 +29,14 @@ export function StudioWall() {
           tap the record to drop the needle · tap the left / right half of the
           screen to switch grooves
         </p>
-
-        <footer className="credits">
-          <p>
-            a Three.js Game Jam entry · theme: tiny worlds · music sequenced
-            with{" "}
-            <a
-              href="https://tonejs.github.io/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Tone.js
-            </a>
-          </p>
-          <p>
-            runner and props from the CC0 packs of{" "}
-            <a
-              href="https://kaylousberg.itch.io/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Kay Lousberg (KayKit)
-            </a>{" "}
-            and{" "}
-            <a href="https://quaternius.com/" target="_blank" rel="noreferrer">
-              Quaternius
-            </a>{" "}
-            (via poly.pizza) · built with React Three Fiber
-          </p>
-        </footer>
       </div>
+
+      {/* absolute, so the head/foot keep their space-between split */}
+      <button className="info-button" onClick={() => setInfo(true)}>
+        credits
+      </button>
+
+      {info && <InfoPanel onClose={() => setInfo(false)} />}
     </div>
   );
 }

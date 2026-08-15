@@ -21,11 +21,14 @@ export const WALL_LOOK_AT: [number, number, number] = [0, WALL_Y - 0.12, 0];
 
 const FRAME_SIZE = 1.72;
 const FRAME_STEP = 2.34; // frame size + gap
-const ROW_Y = 0.12; // DOM title above, hints + credits below the plaques
+const SIDE_MARGIN = 1.7; // wall left of the first frame / right of the last
+const ROW_Y = 0.12; // DOM title above, input hints below the plaques
 const MINI = 0.145; // disc radius 5 → 0.72, nearly filling the frame
 
-const WOOD = "#46331f";
-const BACKING = "#17110d";
+// the frames stay darker than the lit wall — framed things read as objects
+// sitting on a wall, not as holes cut into it
+const WOOD = "#4a3520";
+const BACKING = "#1e160f";
 const DISC_TOP = DISC_THICKNESS / 2;
 
 function Frame({
@@ -200,7 +203,7 @@ function MeadowFrame({ onStart }: { onStart: () => void }) {
         onPointerOut={() => setHover(false)}
       >
         {/* picture light for the one record that matters */}
-        <pointLight position={[0.5, 0.7, 1.9]} intensity={5} color="#ffe2b0" />
+        <pointLight position={[0.5, 0.7, 1.9]} intensity={6} color="#ffe2b0" />
         <Frame
           plaque={
             <div className="plaque">
@@ -233,10 +236,12 @@ function MeadowFrame({ onStart }: { onStart: () => void }) {
 export function WallScene({ onStart }: { onStart: () => void }) {
   const size = useThree((s) => s.size);
 
-  // fit the three-frame row on narrow viewports: visible width at the wall
-  // camera distance is 2·D·tan(fov/2)·aspect
+  // fit the three-frame row: visible width at the wall camera distance is
+  // 2·D·tan(fov/2)·aspect. SIDE_MARGIN is counted as part of the row, so the
+  // frames scale down to leave wall showing either side rather than running
+  // to the screen edges — and keep shrinking on narrow viewports.
   const visW = 2 * 5.2 * Math.tan((42 / 2) * (Math.PI / 180));
-  const rowW = FRAME_SIZE * 3 + (FRAME_STEP - FRAME_SIZE) * 2 + 0.6;
+  const rowW = FRAME_SIZE * 3 + (FRAME_STEP - FRAME_SIZE) * 2 + SIDE_MARGIN * 2;
   const fit = Math.min(1, (visW * (size.width / size.height)) / rowW);
 
   return (
@@ -244,10 +249,15 @@ export function WallScene({ onStart }: { onStart: () => void }) {
       {/* the wall itself — occludes the game scene entirely */}
       <mesh position-z={-0.06}>
         <planeGeometry args={[40, 24]} />
-        <meshStandardMaterial color="#211913" roughness={0.95} />
+        {/* warm greige rather than brown — the amber lamp does the colouring,
+            so a saturated wall just turns the whole room orange */}
+        <meshStandardMaterial color="#4c463d" roughness={0.95} />
       </mesh>
       {/* the desk lamp's warm pool of light */}
-      <pointLight position={[0, 1.6, 3.2]} intensity={14} color="#ffc98a" />
+      <pointLight position={[0, 1.6, 3.2]} intensity={15} color="#ffc98a" />
+      {/* a low bounce that lifts the wall under the frames — the room reads
+          lit rather than lost, without flattening the lamp's falloff */}
+      <pointLight position={[0, -1.4, 3]} intensity={5} color="#e0b083" />
 
       <group scale={fit} position-y={ROW_Y}>
         <MeadowFrame onStart={onStart} />

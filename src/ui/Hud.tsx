@@ -1,17 +1,19 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { clockState } from "../game/clockState";
+import { loadProgress } from "../game/persistence";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
 import { lastCatchColor } from "../scene/notePalette";
+import { PieceDots } from "./PieceDots";
 
 interface Props {
   onPause: () => void;
 }
 
-// The shipping HUD: score + combo, one dot per world piece, pause. Everything
-// else the scene already says — the tonearm is the progress bar and the
-// diorama is the goal display.
+// The shipping HUD: score + combo, one dot per world piece, the score to
+// beat, pause. Everything else the scene already says — the tonearm is the
+// progress bar and the diorama is the goal display.
 //
 // The counters are alive (spec §8.1: feedback, not fireworks — but a HUD
 // that never moves reads as a spreadsheet):
@@ -74,6 +76,26 @@ function Score() {
           +{f.delta}
         </span>
       ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------- best --
+
+// The score to beat, parked out of the eye-line in the top-left. Read once
+// per run mount — the stored best can only change when a run ends, and this
+// unmounts before then. Nothing to show on a record you've never finished.
+function BestScore() {
+  const score = useGameStore((s) => s.score);
+  const [best] = useState(() => loadProgress(activeRun.record.id).highScore);
+
+  if (best <= 0) return null;
+
+  const beaten = score > best;
+  return (
+    <div className={`best-score${beaten ? " beaten" : ""}`}>
+      <span className="best-label">{beaten ? "beaten" : "best"}</span>
+      <span className="best-value">{best.toLocaleString()}</span>
     </div>
   );
 }
@@ -155,32 +177,14 @@ function Combo() {
 // -------------------------------------------------------------------- hud --
 
 export function Hud({ onPause }: Props) {
-  const collected = useGameStore((s) => s.piecesCollected);
-  const lost = useGameStore((s) => s.piecesLost);
-
-  const pieces = activeRun.record.worldPieces;
-  const total = pieces.length;
-  // dots fill in collect order; lost pieces show as holes at the tail
-  const dots = Array.from({ length: total }, (_, i) => {
-    if (i < collected.length) return "got";
-    if (i >= total - lost) return "lost";
-    return "pending";
-  });
-
   return (
     <>
+      <BestScore />
       <div className="game-hud">
         <Score />
         <Combo />
       </div>
-      <div
-        className="piece-dots"
-        aria-label={`${collected.length} of ${total} world pieces`}
-      >
-        {dots.map((state, i) => (
-          <span key={i} className={`dot ${state}`} />
-        ))}
-      </div>
+      <PieceDots />
       <button className="pause-button" onClick={onPause} aria-label="Pause">
         ⏸
       </button>
