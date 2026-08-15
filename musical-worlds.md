@@ -287,6 +287,8 @@ useFrame(() => {
 });
 ```
 
+**Check that the run clip's arms alternate before tuning anything else.** Not every clip labelled `Running` is a run: the 1.x pack's swings both arms the same way at once, and by 0.081 model units against the feet's 0.600 — a bob, not a swing. It's invisible in a thumbnail and obvious in motion. Measure it rather than squinting: sample each hand's position along the running axis over a couple of seconds and correlate the two. Alternating limbs give ≈ −1 (the feet do), in-phase limbs give ≈ +1. Changing clips changes stride length, so `STRIDE_SPEED` has to be rescaled by the ratio of foot excursion per cycle or the cadence shifts underneath you.
+
 **Foot sliding is the only thing to get right.** The character runs in place on a moving surface, so the clip's cadence has to match surface speed or the feet skate. Tune `STRIDE_SPEED` once in the middle lane; after that it is automatically correct in every lane, because both sides of the ratio are physical. On pause, set `timeScale` to 0 — the whole scene freezes with the Transport (§8.8).
 
 No state machine, no blending. A `"idle" | "run" | "cheer"` string decides which clip is playing, and the run itself is one clip and one `timeScale`.

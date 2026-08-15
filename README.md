@@ -55,7 +55,7 @@ as-is to Vercel or Netlify, no server or config needed.
 ## Credits
 
 - Music: sequenced with [Tone.js](https://tonejs.github.io/)
-- Runner: the Rogue wearing the Ranger's head, both from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: cape dropped, gear repainted into a sweatshirt/jeans/trainers, headphones added, run/idle/cheer clips from the same pack's 1.x rig, see `scripts/build-runner.mjs`)
+- Runner: the Rogue wearing the Ranger's head, both from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: cape dropped, gear repainted into a sweatshirt/jeans/trainers, headphones added, run clip from the pack’s 2.0 animation library, idle and cheer from its 1.x rig, see `scripts/build-runner.mjs`)
 - Meadow props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) by Kay Lousberg — CC0 (windmill, home, well, trees, stone fence, wheelbarrow, waterlily)
 - Harbour props: [Quaternius](https://quaternius.com/) — CC0 (hut, dock, sail boat, crate, barrel, rocks, palm tree, anchor, chest). The lighthouse is built from primitives in `src/scene/procProps.ts` so its beam can turn.
 - Neon props: [Kenney](https://kenney.nl/) — CC0 (skyscraper, apartment block) and [Quaternius](https://quaternius.com/) — CC0 (market stand, taxi, street light, traffic signal, water tower, dumpster, fire hydrant). All repainted for night by `recolor` in `scripts/build-diorama.mjs`. The neon sign is built from primitives so its tubes can flicker.

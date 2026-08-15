@@ -1,20 +1,21 @@
 // Build the listener (spec §8.2) from KayKit's Adventurers pack (CC0, Kay
-// Lousberg): the Rogue's body, the Ranger's head, three clips off the 1.x
-// knight, and a repaint that turns the costume into a sweatshirt, jeans and
+// Lousberg): the Rogue's body, the Ranger's head, three clips off two other
+// files, and a repaint that turns the costume into a sweatshirt, jeans and
 // trainers. Someone out for a run with headphones on — which is what the game
 // is about, and which no amount of repainting a knight in plate would give.
 //
-// The body and the clips come from two different versions of the same pack,
-// and that is deliberate. Pack 1.x baked the whole 76-clip library into every
-// character; 2.0 split the clips into a shared library that no longer ships a
-// Cheer. So the mesh comes from 2.0 and the three clips we play come from the
-// 1.x knight file, re-pointed bone by bone.
+// Four source files for one character wants explaining. Pack 1.x baked the
+// whole 76-clip library into every character; 2.0 split the clips into a
+// shared library, dropped some of them, and reanimated others. So each clip
+// comes from whichever version animates it best: the run from 2.0, where the
+// arms actually alternate, and the cheer from 1.x, which is the only version
+// that has one.
 //
-// That is not retargeting onto a foreign rig (§4). The two skeletons share all
-// 23 deform bones with identical rest translations — 1.x is Rig_Medium plus IK
-// helper bones — and every deform bone is keyed directly in all three clips,
-// so the 54 IK-helper channels per clip are redundant and get dropped with the
-// bones they point at.
+// That is not retargeting onto a foreign rig (§4). All of it is one skeleton:
+// the two versions share all 23 deform bones with identical rest translations
+// (1.x is Rig_Medium plus IK helper bones), every deform bone is keyed
+// directly in all three clips, and the 54 IK-helper channels per 1.x clip are
+// redundant and get dropped with the bones they point at.
 //
 // The head alone keeps the pack's texture, because hair, face and neck are one
 // primitive sharing one material there — flat-repaint it and he goes bald. The
@@ -22,7 +23,7 @@
 // already use, so it costs nothing and breaks no style rule.
 //
 // Usage: node scripts/build-runner.mjs  (rewrites public/models/runner.glb
-// from the three runner-*-original.glb files in assets-src/)
+// from the runner-*.glb files in assets-src/)
 import { NodeIO } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 import {
@@ -32,11 +33,30 @@ import {
   unpartition,
 } from "@gltf-transform/functions";
 
-// Cheer is the third: the run used to END on a standing Idle, which reads as
-// the runner giving up rather than finishing. It is 1.67s long and the results
-// panel is held back 1800ms for the needle lift, so it plays out exactly in
-// the gap between the last beat and the overlay.
-const KEEP_ANIMATIONS = new Set(["Running_A", "Idle", "Cheer"]);
+// Which clip comes out of which file, and what it's called once it's here.
+//
+// Cheer is why the 1.x knight is still in the list at all: the run used to END
+// on a standing Idle, which reads as the runner giving up rather than
+// finishing, and 2.0's free animation set doesn't ship a Cheer. It's 1.67s
+// against the 1800ms the results panel is already held back for the needle
+// lift, so it plays out exactly in the gap before the overlay.
+//
+// Running_A is why 2.0's library is here. 1.x's run swings both arms the same
+// way at once, and barely: measured in engine, the hands travel 0.081 model
+// units against the feet's 0.600, and the two hands correlate at +0.79 rather
+// than the −1 alternating limbs give. 2.0's reanimated version is a real run —
+// hands at −0.91, travelling 0.58. Its longer stride is what STRIDE_SPEED in
+// Runner.tsx had to be rescaled for.
+const CLIPS = [
+  ["assets-src/runner-movement-2.0.glb", new Map([["Running_A", "Running_A"]])],
+  [
+    "assets-src/runner-knight-original.glb",
+    new Map([
+      ["Idle", "Idle"],
+      ["Cheer", "Cheer"],
+    ]),
+  ],
+];
 
 // The cape has to go. It is the one mesh in this file authored for a camera
 // that isn't ours: a full-length sheet hanging off the shoulders, which from
@@ -116,16 +136,15 @@ const io = new NodeIO().registerExtensions(KHRONOS_EXTENSIONS);
 const url = (name) => new URL(`../${name}`, import.meta.url).pathname;
 
 const doc = await io.read(url("assets-src/runner-rogue-original.glb"));
-const clipDonor = await io.read(url("assets-src/runner-knight-original.glb"));
 const root = doc.getRoot();
 
-// Everything the Rogue file brought with it. After the merge, anything NOT in
-// these sets arrived from the knight and has to leave again once its clips
-// have been re-pointed.
 for (const node of root.listNodes()) {
   if (DROP_NODES.has(node.getName())) node.dispose();
 }
 
+// Everything the Rogue file brought with it. After each merge, anything NOT in
+// these sets arrived from a donor and has to leave again once the clips it
+// came for have been re-pointed.
 const ownNodes = new Map(root.listNodes().map((n) => [n.getName(), n]));
 const ownScenes = new Set(root.listScenes());
 const ownAnimations = new Set(root.listAnimations());
@@ -133,37 +152,46 @@ const ownMeshes = new Set(root.listMeshes());
 const ownMaterials = new Set(root.listMaterials());
 const ownSkins = new Set(root.listSkins());
 
-mergeDocuments(doc, clipDonor);
+for (const [file, wanted] of CLIPS) {
+  mergeDocuments(doc, await io.read(url(file)));
 
-for (const anim of root.listAnimations()) {
-  if (ownAnimations.has(anim)) continue;
-  if (KEEP_ANIMATIONS.has(anim.getName())) {
-    for (const channel of anim.listChannels()) {
-      const target = ownNodes.get(channel.getTargetNode()?.getName());
-      // no counterpart on Rig_Medium — an IK helper, and redundant
-      if (!target) channel.dispose();
-      else channel.setTargetNode(target);
+  for (const anim of root.listAnimations()) {
+    if (ownAnimations.has(anim)) continue;
+    const keep = wanted.get(anim.getName());
+    if (keep) {
+      anim.setName(keep);
+      ownAnimations.add(anim);
+      for (const channel of anim.listChannels()) {
+        const target = ownNodes.get(channel.getTargetNode()?.getName());
+        // no counterpart on Rig_Medium — an IK helper, and redundant
+        if (!target) channel.dispose();
+        else channel.setTargetNode(target);
+      }
+      continue;
     }
-    continue;
+    // Disposing an animation alone leaves its samplers alive, which keeps the
+    // keyframe accessors referenced and un-prunable.
+    for (const channel of anim.listChannels()) channel.dispose();
+    for (const sampler of anim.listSamplers()) sampler.dispose();
+    anim.dispose();
   }
-  // Disposing an animation alone leaves its samplers alive, which keeps the
-  // keyframe accessors referenced and un-prunable.
-  for (const channel of anim.listChannels()) channel.dispose();
-  for (const sampler of anim.listSamplers()) sampler.dispose();
-  anim.dispose();
-}
 
-// The knight himself — skeleton, meshes, texture and all — has served his
-// purpose. Nodes go last so the channel re-pointing above is already done.
-for (const scene of root.listScenes())
-  if (!ownScenes.has(scene)) scene.dispose();
-for (const skin of root.listSkins()) if (!ownSkins.has(skin)) skin.dispose();
-for (const mesh of root.listMeshes()) if (!ownMeshes.has(mesh)) mesh.dispose();
-for (const mat of root.listMaterials())
-  if (!ownMaterials.has(mat)) mat.dispose();
-for (const node of root.listNodes()) {
-  if (!ownNodes.has(node.getName()) || ownNodes.get(node.getName()) !== node) {
-    node.dispose();
+  // The donor's own body — skeleton, meshes, texture and all — has served its
+  // purpose. Nodes go last so the channel re-pointing above is already done.
+  for (const scene of root.listScenes())
+    if (!ownScenes.has(scene)) scene.dispose();
+  for (const skin of root.listSkins()) if (!ownSkins.has(skin)) skin.dispose();
+  for (const mesh of root.listMeshes())
+    if (!ownMeshes.has(mesh)) mesh.dispose();
+  for (const mat of root.listMaterials())
+    if (!ownMaterials.has(mat)) mat.dispose();
+  for (const node of root.listNodes()) {
+    if (
+      !ownNodes.has(node.getName()) ||
+      ownNodes.get(node.getName()) !== node
+    ) {
+      node.dispose();
+    }
   }
 }
 

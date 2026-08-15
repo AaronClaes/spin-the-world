@@ -26,7 +26,13 @@ const RUNNER_SCALE = 0.2;
 // timeScale 1. Tuned by eye in the middle lane (spec §8.2); after that the
 // cadence is automatically correct in every lane because both sides of the
 // ratio are physical.
-const STRIDE_SPEED = 5.0;
+//
+// 5.0 was the eye-tuned value for the old clip. Swapping in a run cycle that
+// covers more ground per stride doesn't get to keep it: the foot's front-to-
+// back excursion went 0.600 → 0.737 model units at the same 0.80s, so the clip
+// now depicts 1.23× the speed it used to and the number has to follow it or
+// the feet skate.
+const STRIDE_SPEED = 6.15;
 
 // Lean into a lane change. The camera already banks toward the target lane
 // (CameraRig LEAN_FRACTION) but the runner didn't, so a lane change was the
