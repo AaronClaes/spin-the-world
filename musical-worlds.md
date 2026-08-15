@@ -335,12 +335,14 @@ SFX (do not skip, this is the cheapest polish available):
 
 No orbit, no shake (except one small impulse on a record-skip) — but not frozen either. Two movements, both subtle:
 
-- **Slow dolly.** The player's world position migrates ~2.5 units inward over the run as the band spirals in; a truly fixed camera that frames the rim misframes the label. The camera rig tracks `bandCenter` (heavily lerped, orientation unchanged), so the framing at beat 0 and beat 176 is the same framing.
+- **Slow dolly.** The player's world position migrates ~2.5 units inward over the run as the band spirals in; a truly fixed camera that frames the rim misframes the label. The camera rig tracks `bandCenter` (heavily lerped) — but only the _position_ tracks it fully. The aim is mostly anchored near the label, because the gap between the groove and the label more than halves over the run and a rig rigid to the player cannot hold both ends of it: a true orientation-unchanged dolly aims further out at beat 0 than at beat 176, and pushes the label off the side of the frame. The end framing is the reference; the opening swings in to meet it.
 - **Lane lean.** On a lane switch, the camera eases laterally toward the target lane by ~15–20% of `laneGap`, with a soft lerp and optionally ~1° of roll. Enough that the world responds to input and the game stops feeling static; not enough to read as camera movement.
 
 Base placement: behind the player along the tangential direction, a few units up, looking forward along the groove and biased ~20% toward the disc centre so the label sits in frame off to one side. The track curves away ahead of you; the world you're building is visible the entire run.
 
 Tune all of it by hand with leva, then hardcode the numbers. Verify framing in landscape-phone aspect as well as desktop (§9) before locking.
+
+Because the framing that matters is horizontal and `fov` is vertical, the rig holds the **horizontal** angle constant at its 16:9 value and lets the vertical open up on narrower windows (clamped, so a portrait window doesn't distort). Landscape phone is wider than 16:9 and gets more room, not less; a resized 4:3 desktop window would otherwise crop the label straight back off the side.
 
 ### 8.7 Score, stars, and the studio wall
 
