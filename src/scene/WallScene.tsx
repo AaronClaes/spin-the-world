@@ -452,35 +452,25 @@ function Frame({
 
 // ------------------------------------------------------- the hanging record --
 
-// One planted prop on the hanging record — the same authored island spot as
-// the game diorama, with the alive-world bob.
+// One planted prop on the hanging record, standing on the same authored island
+// spot as the game diorama. It used to bob, matching the completion bob the
+// game disc had — both are gone: the record is already turning, and a town
+// floating up and down on top of a rotating disc reads as scenery that forgot
+// to be attached to anything.
 function WallProp({
   prop,
   island,
   model,
-  index,
 }: {
   prop: string;
   island: IslandDef;
   model: string;
-  index: number;
 }) {
   const clone = usePropClone(prop, model);
-  const group = useRef<Group>(null);
   const spot = placementFor(island, prop);
 
-  useFrame(({ clock }) => {
-    if (!group.current) return;
-    group.current.position.y =
-      spot.y + Math.sin(clock.elapsedTime * 2.2 + index * 1.3) * 0.015;
-  });
-
   return (
-    <group
-      ref={group}
-      position={[spot.x, spot.y, spot.z]}
-      rotation-y={spot.rot}
-    >
+    <group position={[spot.x, spot.y, spot.z]} rotation-y={spot.rot}>
       <primitive object={clone} />
     </group>
   );
@@ -578,13 +568,12 @@ function HangingRecord({
           </mesh>
           {/* the tiny world, planted and alive */}
           <Island island={island} alive />
-          {props.map((prop, i) => (
+          {props.map((prop) => (
             <WallProp
               key={prop}
               prop={prop}
               island={island}
               model={record.dioramaModel}
-              index={i}
             />
           ))}
         </group>

@@ -453,13 +453,19 @@ function PlantedProp({
         break;
     }
 
-    // the one-shot completion hop, on top of whatever the prop already does
+    // The one-shot completion hop, on top of whatever the prop already does —
+    // staggered outward from the spindle so the finished world reads as a wave
+    // rather than a twitch. Deliberately the ONLY thing completion adds to a
+    // prop's height: a permanent sine used to ride here as well, and every
+    // building in the world drifting up and down together doesn't read as
+    // liveliness, it reads as everything having come unmoored from the ground.
+    // What being alive does to a prop is make its own motion louder — the
+    // sails and the beam speed up, the tubes burn harder — and that's enough.
     if (aliveAt.current !== null) {
       const h = (now - aliveAt.current) / ALIVE_HOP;
       if (h >= 1) aliveAt.current = null;
       else if (h > 0) y += Math.sin(Math.PI * h) * 0.045;
     }
-    if (alive) y += Math.sin(now * 2.0 + phase) * 0.006;
 
     g.position.y = y;
     g.rotation.z = tilt;
