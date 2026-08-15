@@ -1,5 +1,5 @@
 // Rework the KayKit knight into the headphones listener (spec §8.2):
-// drop the weapon/armor accessory meshes and every animation except the two
+// drop the weapon/armor accessory meshes and every animation except the three
 // we play, and repaint the body with flat colours (no texture) so the figure
 // reads as a small casual listener rather than a knight. The oversized
 // headphones themselves are added at runtime, parented to the head bone.
@@ -10,7 +10,12 @@ import { NodeIO } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 import { dedup, prune, unpartition } from "@gltf-transform/functions";
 
-const KEEP_ANIMATIONS = new Set(["Running_A", "Idle"]);
+// The source pack ships 76 clips on this rig; we pay ~10-20 KB per clip kept.
+// Cheer is the third: the run used to END on a standing Idle, which reads as
+// the runner giving up rather than finishing. It is 1.67s long and the results
+// panel is held back 1800ms for the needle lift, so it plays out exactly in
+// the gap between the last beat and the overlay.
+const KEEP_ANIMATIONS = new Set(["Running_A", "Idle", "Cheer"]);
 
 const DROP_NODES = new Set([
   "1H_Sword",

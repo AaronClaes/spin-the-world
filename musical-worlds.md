@@ -62,7 +62,7 @@ Explicitly out of scope. If you find yourself building one of these, stop.
 - No terrain, no open world, no free camera
 - No multiplayer, no leaderboard backend, no accounts (local persistence only, §8.7)
 - No dialogue, cutscenes, or narrative
-- No animation state machines, blend trees, or transitions — one looping run clip only (§8.2)
+- No animation state machines or blend trees. Three clips from the source pack — run, idle, and a one-shot cheer when the track ends — switched by a single string, and the only crossfades in the game are into and out of that cheer (§8.2)
 - No retargeting animations onto a rig they weren't authored for
 - No level editor
 - No multiple scenes or router. One canvas, HTML overlay for UI.
@@ -289,7 +289,11 @@ useFrame(() => {
 
 **Foot sliding is the only thing to get right.** The character runs in place on a moving surface, so the clip's cadence has to match surface speed or the feet skate. Tune `STRIDE_SPEED` once in the middle lane; after that it is automatically correct in every lane, because both sides of the ratio are physical. On pause, set `timeScale` to 0 — the whole scene freezes with the Transport (§8.8).
 
-No state machine, no blending, no transitions. One clip, one `timeScale`.
+No state machine, no blending. A `"idle" | "run" | "cheer"` string decides which clip is playing, and the run itself is one clip and one `timeScale`.
+
+**The run should end on a cheer, not on a standing idle.** The pack ships 76 clips on this rig and we keep three, at ~10–20 KB each; `Cheer` is 1.67s and the results panel is already held back 1800ms for the needle lift, so it plays out exactly in the gap between the last beat and the overlay. It's one-shot and clamped, then settles into `Idle` on the mixer's `finished` event. Its crossfades are the only blends in the game: a hard cut _into_ a run is invisible because the count-in covers it, and there's nothing covering a hard cut out of one.
+
+**Lean into a lane change.** The camera banks toward the target lane (§8.6) and the runner has to as well, or the game's only input is a figure sliding sideways bolt upright. Tilt on the running axis, driven by the gap between the committed lane and the interpolated one — that gap is proportional to lateral velocity, because the lane lerp is exponential, and it self-zeroes when the runner settles, so no extra state exists to get out of sync. Peak is ~11°: a lean, not a stunt. Put it on an inner group so the contact shadow stays flat on the vinyl.
 
 **Character design:** a small figure with oversized headphones. It reads as a _listener_, which is what someone running around a playing record should be. At the size it appears on screen (~130px tall, from behind, on a near-black disc) silhouette and one accent colour carry it entirely — facial detail is invisible, so low-poly is the correct choice rather than a compromise. Headphones are one extra mesh and give a distinctive outline.
 

@@ -2,18 +2,20 @@ import { useAnimations, useGLTF } from "@react-three/drei";
 import { createPortal, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import type { Group, Object3D } from "three";
+import { LoopOnce } from "three";
 import { songProgress } from "../game/clock";
 import { DISC_THICKNESS, RAD_PER_BEAT } from "../game/constants";
 import { clockState } from "../game/clockState";
 import { bandCenter, laneRadius } from "../game/geometry";
 import { activeRun } from "../game/runState";
+import { useGameStore } from "../game/store";
 
 // The listener (spec §8.2): KayKit's rig and run clip (CC0, Kay Lousberg),
 // reworked by scripts/build-runner.mjs — armor accessories and helmet gone,
-// flat repaint, only Running_A + Idle kept. The oversized headphones are
-// built here from primitives and portalled onto the head bone so they follow
-// the animation. At ~130px tall the silhouette and the accent colour do all
-// the work.
+// flat repaint, only Running_A + Idle + Cheer kept. The oversized headphones
+// are built here from primitives and portalled onto the head bone so they
+// follow the animation. At ~130px tall the silhouette and the accent colour
+// do all the work.
 
 // Character is ~2.47 units tall in the GLB; scale to sit small on a radius-5 disc.
 const RUNNER_SCALE = 0.2;
@@ -23,6 +25,28 @@ const RUNNER_SCALE = 0.2;
 // cadence is automatically correct in every lane because both sides of the
 // ratio are physical.
 const STRIDE_SPEED = 5.0;
+
+// Lean into a lane change. The camera already banks toward the target lane
+// (CameraRig LEAN_FRACTION) but the runner didn't, so a lane change was the
+// figure sliding sideways bolt upright — the one input the game has, and the
+// character didn't acknowledge it.
+//
+// The tilt is driven by the gap between the committed lane and the visual one,
+// which is proportional to lateral velocity (the lane lerp is exponential, so
+// v = 14·gap) and self-zeroing once the runner settles. Smoothing it at 20/s
+// against a gap decaying at 14/s costs the peak: it lands at 0.435 of the
+// nominal, i.e. ~11° for a single-lane move, which is a lean rather than a
+// stunt. The clamp only bites on a double-tap, where two moves stack.
+const BANK_PER_LANE = 0.44;
+const BANK_SMOOTH = 20;
+const BANK_MAX = 0.3;
+
+// Coming off the last beat, the run doesn't stop so much as finish. Cheer is
+// one-shot rather than looped, and the crossfades are the only blends in the
+// game (spec §8.2): a hard cut works going INTO a run, because the count-in
+// covers it, but there's nothing to cover a hard cut out of one.
+const CHEER_FADE = 0.25;
+const CHEER_TO_IDLE = 0.4;
 
 const DISC_TOP = DISC_THICKNESS / 2;
 
@@ -69,9 +93,11 @@ function Headphones({ head, accent }: { head: Object3D; accent: string }) {
 
 export function Runner() {
   const group = useRef<Group>(null);
+  const body = useRef<Group>(null);
   const { scene, animations } = useGLTF("/models/runner.glb");
-  const { actions } = useAnimations(animations, group);
-  const wasPlaying = useRef(false);
+  const { actions, mixer } = useAnimations(animations, group);
+  const pose = useRef<"idle" | "run" | "cheer">("idle");
+  const bank = useRef(0);
 
   const head = useMemo(() => scene.getObjectByName("head") ?? null, [scene]);
 
@@ -79,7 +105,19 @@ export function Runner() {
     actions.Idle?.reset().play();
   }, [actions]);
 
-  useFrame(() => {
+  // Cheer is clamped at its last frame, so settling back to Idle needs the
+  // mixer to say when — polling the action's time would race the loop count.
+  useEffect(() => {
+    const settle = (e: { action: unknown }) => {
+      if (e.action !== actions.Cheer) return;
+      actions.Cheer?.fadeOut(CHEER_TO_IDLE);
+      actions.Idle?.reset().fadeIn(CHEER_TO_IDLE).play();
+    };
+    mixer.addEventListener("finished", settle);
+    return () => mixer.removeEventListener("finished", settle);
+  }, [mixer, actions]);
+
+  useFrame((_, delta) => {
     if (!group.current) return;
 
     const { band, totalBeats, bpm } = activeRun.record;
@@ -88,14 +126,35 @@ export function Runner() {
     const radius = laneRadius(clockState.laneVisual, center, band.laneGap);
     group.current.position.set(0, DISC_TOP, radius);
 
+    // Lean toward the lane being moved to. The tilt sits on an inner group so
+    // the contact shadow stays flat on the vinyl — the runner leans, the
+    // shadow doesn't.
+    const gap = useGameStore.getState().lane - clockState.laneVisual;
+    bank.current +=
+      (gap * BANK_PER_LANE - bank.current) *
+      (1 - Math.exp(-BANK_SMOOTH * delta));
+    if (body.current) {
+      body.current.rotation.z = Math.max(
+        -BANK_MAX,
+        Math.min(BANK_MAX, bank.current),
+      );
+    }
+
     const running = clockState.playing && !clockState.ended;
-    if (running !== wasPlaying.current) {
-      wasPlaying.current = running;
-      if (running) {
+    const want = clockState.ended ? "cheer" : running ? "run" : "idle";
+    if (want !== pose.current) {
+      pose.current = want;
+      if (want === "run") {
         actions.Idle?.stop();
+        actions.Cheer?.stop();
         actions.Running_A?.reset().play();
+      } else if (want === "cheer") {
+        actions.Running_A?.fadeOut(CHEER_FADE);
+        actions.Cheer?.reset().setLoop(LoopOnce, 1).fadeIn(CHEER_FADE).play();
+        if (actions.Cheer) actions.Cheer.clampWhenFinished = true;
       } else {
         actions.Running_A?.stop();
+        actions.Cheer?.stop();
         actions.Idle?.reset().play();
       }
     }
@@ -118,8 +177,13 @@ export function Runner() {
 
   return (
     <group ref={group} rotation-y={Math.PI / 2} scale={RUNNER_SCALE}>
-      <primitive object={scene} />
-      {head && <Headphones head={head} accent={activeRun.record.accentColor} />}
+      {/* the bank pivots at the feet, on the running axis */}
+      <group ref={body}>
+        <primitive object={scene} />
+        {head && (
+          <Headphones head={head} accent={activeRun.record.accentColor} />
+        )}
+      </group>
       {/* contact shadow — a dark disc sprite, not a shadow map (spec §9) */}
       <mesh rotation-x={-Math.PI / 2} position-y={0.015}>
         <circleGeometry args={[0.9, 24]} />
