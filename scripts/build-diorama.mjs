@@ -54,14 +54,17 @@ const NIGHT = {
 };
 
 // The tower is nearly all glass in the source — `window` and `trim` are two
-// sheets of curtain wall, not a pane and a moulding. Given the block's warm
-// office lighting it came out as one cream slab with no windows in it at all,
-// so it goes the other way: dark blue glass reflecting the dusk, lit only
-// faintly. Two buildings, two reads, and the small warm one wins the eye.
+// sheets of curtain wall, not a pane and a moulding. Lit like the block's
+// windows it came out as one cream slab with no windows in it at all, so it
+// goes the other way: dark blue glass reflecting the dusk, and the colour
+// arrives as the neon rings the dressing wraps round it
+// (src/scene/neonDressing.ts). Darker than it looks like it should be, on
+// purpose — with any emissive at all it was the palest large surface on the
+// island and pulled the eye off its own lights.
 const NIGHT_TOWER = {
   ...NIGHT,
-  window: { base: [0.16, 0.19, 0.3], emissive: [0.13, 0.18, 0.33] },
-  trim: { base: [0.1, 0.12, 0.19], emissive: [0.05, 0.09, 0.2] },
+  window: { base: [0.11, 0.13, 0.21], emissive: [0.02, 0.04, 0.09] },
+  trim: { base: [0.08, 0.09, 0.15], emissive: [0.02, 0.04, 0.1] },
 };
 
 const RECORDS = {

@@ -1,6 +1,7 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  Color,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
@@ -224,12 +225,16 @@ function neonsign(): Object3D {
           d + inset * 0.002,
         ),
         new MeshBasicMaterial({
-          color: c,
+          // past 1.0 and off tone mapping, so the bloom pass sees it: the
+          // threshold is on luma and a saturated hue never gets there on its
+          // own (see neonDressing.ts)
+          color: new Color(c).multiplyScalar(1.6),
           transparent: true,
           opacity: 1,
           blending: AdditiveBlending,
           depthWrite: false,
           side: DoubleSide,
+          toneMapped: false,
         }),
       );
       m.position.set(...pos);

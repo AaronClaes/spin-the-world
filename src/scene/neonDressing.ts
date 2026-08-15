@@ -7,9 +7,11 @@ import {
   Color,
   CylinderGeometry,
   DoubleSide,
+  FrontSide,
   Mesh,
   MeshBasicMaterial,
   type Object3D,
+  type Side,
   SphereGeometry,
   Vector3,
 } from "three";
@@ -23,13 +25,15 @@ import {
 // lights are put on here, at load, where three.js can do things a glTF
 // material can't:
 //
-//   - per-floor and per-window colour, by writing vertex colours onto the
-//     window quads the source model already has and swapping the material to
-//     an unlit one. A glTF material is one colour for every window it touches;
-//     the geometry knows where the windows are, so use that.
+//   - per-window colour, by welding the source model's own window quads into
+//     panels and writing vertex colours onto them. A glTF material is one
+//     colour for every window it touches; the geometry knows where the
+//     windows are, so use that.
 //   - additive strips, rings and underglow, which can only ever brighten what
 //     is behind them (see the lighthouse beam for why that matters over
 //     near-black vinyl).
+//   - colours past 1.0 on materials taken off tone mapping, which is the only
+//     thing that gets a saturated hue through the bloom threshold at all.
 //
 // Everything lit here is registered for the slow pulse in Diorama.tsx, so no
 // two lights on the island breathe together.
@@ -51,11 +55,24 @@ const DARK = new Color("#1a1826");
 const SIGN_MAGENTA = "#ff2d8e";
 const SIGN_CYAN = "#2de0ff";
 
-// Bloom thresholds on luminance, which is mostly green — a saturated magenta
-// can't reach the threshold at any brightness. Lifting a hue toward white
-// keeps the colour while getting the pixel bright enough to bloom, which is
-// also what a real tube looks like: white core, coloured spill.
-const lit = (hex: string, lift: number) => new Color(hex).lerp(WHITE, lift);
+// How a neon colour actually gets to glow.
+//
+// The bloom pass thresholds on Rec.709 luma, which is 72% green: #ff2d8e is
+// luma 0.38 and #2de0ff is 0.74, against a play threshold of 0.92. Neither
+// blooms at ANY opacity — no amount of turning it up helps, because the hue
+// itself can't reach the bar.
+//
+// Two ways past that, and this uses both:
+//   lift  — lerp the hue toward white. Cheap, and it's what a real tube looks
+//           like up close, but too much of it turns the colour to paste.
+//   gain  — scale the colour past 1.0 and take the material off the renderer's
+//           tone mapping, so the pixel reaches the composer as HDR. That's
+//           what actually clears the threshold, and the bloom it throws is in
+//           the hue rather than white. The core clips toward white when the
+//           ToneMapping pass lands at the end of the stack, which is exactly
+//           how neon photographs: white core, coloured halo.
+const lit = (hex: string, lift: number, gain = 1) =>
+  new Color(hex).lerp(WHITE, lift).multiplyScalar(gain);
 
 // deterministic — the same window is the same colour every run
 function hash(x: number, y: number, z: number): number {
@@ -88,16 +105,37 @@ function pulsing(mesh: Mesh, depth: number, speed: number, phase: number) {
 
 // ------------------------------------------------------------- primitives ---
 
-// A strip, ring or glow: unlit, additive, and never writing depth, so it
-// brightens whatever it crosses instead of cutting a hole in it.
-function glowMaterial(hex: string, lift: number, opacity: number) {
+// A surface that IS the light — a lamp lens, a headlight, an awning lit from
+// underneath. Opaque, so it keeps its shape, but off the light rig and pushed
+// past 1.0 so it blooms.
+const unlitNeon = (hex: string, lift: number, gain: number) =>
+  new MeshBasicMaterial({ color: lit(hex, lift, gain), toneMapped: false });
+
+// A strip, ring or spill: additive and never writing depth, so it brightens
+// whatever it crosses instead of cutting a hole in it.
+//
+// `side` matters more than it looks. Additive layers stack, so a closed box
+// wrapped round a tower contributes its near wall, its far wall and its top
+// and bottom all to the same pixel and saturates to white however low the
+// gain goes. Anything that wraps something wants an open shell and FrontSide,
+// so exactly one wall is in front of the camera.
+function glowMaterial(
+  hex: string,
+  lift: number,
+  opacity: number,
+  gain = 1.45,
+  side: Side = DoubleSide,
+) {
   return new MeshBasicMaterial({
-    color: lit(hex, lift),
+    color: lit(hex, lift, gain),
     transparent: true,
     opacity,
     blending: AdditiveBlending,
     depthWrite: false,
-    side: DoubleSide,
+    side,
+    // r3f tone-maps the renderer AND runs a ToneMapping pass; without this the
+    // renderer would roll the gain off before the bloom ever saw it
+    toneMapped: false,
   });
 }
 
@@ -132,82 +170,138 @@ function inLocalFrame<T>(
   return result;
 }
 
-// Repaint the mesh carrying `matName` as unlit, with a colour chosen per
-// triangle. `pick` gets the triangle's centroid and the mesh's own bounds;
-// quantising the centroid inside `pick` is what keeps a quad's two triangles
-// the same colour.
+// Repaint the mesh carrying `matName` as unlit, one colour per PANEL, where a
+// panel is a set of triangles joined by shared vertices.
+//
+// The first version of this coloured per triangle off the triangle's own
+// centroid, and a window is two triangles whose centroids sit either side of
+// its diagonal — so the two halves landed on different floors and different
+// lit/unlit rolls, and every pane came out as two clashing triangles. Welding
+// the triangles into panels first is the fix, and it holds whatever size the
+// source model's windows happen to be.
 function paintPanels(
   root: Object3D,
   matName: string,
-  pick: (c: Vector3, box: Box3) => Color,
-): Mesh | null {
-  let painted: Mesh | null = null;
+  pick: (centre: Vector3, box: Box3) => Color,
+): void {
   root.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
-    const material = mesh.material as MeshBasicMaterial;
-    if (material?.name !== matName) return;
+    if ((mesh.material as MeshBasicMaterial)?.name !== matName) return;
 
-    // non-indexed so no vertex is shared between two windows — a shared
-    // corner would blend two hues across both of them
+    // non-indexed so each triangle owns its three vertices and can be given a
+    // colour without bleeding into a neighbour
     const geometry = mesh.geometry.index
       ? mesh.geometry.toNonIndexed()
       : mesh.geometry.clone();
     const position = geometry.attributes.position as BufferAttribute;
     const box = new Box3().setFromBufferAttribute(position);
+    const triangles = position.count / 3;
+
+    // union-find: two triangles that share a vertex position are the same panel
+    const parent = Int32Array.from({ length: triangles }, (_, i) => i);
+    const find = (i: number): number => {
+      let root = i;
+      while (parent[root] !== root) root = parent[root];
+      while (parent[i] !== root) [i, parent[i]] = [parent[i], root];
+      return root;
+    };
+    const corners = new Map<string, number>();
+    const at = new Vector3();
+    for (let t = 0; t < triangles; t++) {
+      for (let v = 0; v < 3; v++) {
+        at.fromBufferAttribute(position, t * 3 + v);
+        const key = `${Math.round(at.x * 1e4)},${Math.round(at.y * 1e4)},${Math.round(at.z * 1e4)}`;
+        const other = corners.get(key);
+        if (other === undefined) corners.set(key, t);
+        else {
+          const a = find(other);
+          const b = find(t);
+          if (a !== b) parent[b] = a;
+        }
+      }
+    }
+
+    // one centre, and so one colour, per panel
+    const centres = new Map<number, { sum: Vector3; n: number }>();
+    for (let t = 0; t < triangles; t++) {
+      const panel = find(t);
+      let entry = centres.get(panel);
+      if (!entry) {
+        entry = { sum: new Vector3(), n: 0 };
+        centres.set(panel, entry);
+      }
+      for (let v = 0; v < 3; v++)
+        entry.sum.add(at.fromBufferAttribute(position, t * 3 + v));
+      entry.n += 3;
+    }
+    const paint = new Map<number, Color>();
+    for (const [panel, { sum, n }] of centres)
+      paint.set(panel, pick(sum.divideScalar(n), box));
 
     const colors = new Float32Array(position.count * 3);
-    const a = new Vector3();
-    const centroid = new Vector3();
-    for (let t = 0; t < position.count; t += 3) {
-      centroid.set(0, 0, 0);
-      for (let v = 0; v < 3; v++)
-        centroid.add(a.fromBufferAttribute(position, t + v));
-      centroid.divideScalar(3);
-      const paint = pick(centroid, box);
+    for (let t = 0; t < triangles; t++) {
+      const c = paint.get(find(t)) as Color;
       for (let v = 0; v < 3; v++) {
-        colors[(t + v) * 3] = paint.r;
-        colors[(t + v) * 3 + 1] = paint.g;
-        colors[(t + v) * 3 + 2] = paint.b;
+        colors[(t * 3 + v) * 3] = c.r;
+        colors[(t * 3 + v) * 3 + 1] = c.g;
+        colors[(t * 3 + v) * 3 + 2] = c.b;
       }
     }
     geometry.setAttribute("color", new BufferAttribute(colors, 3));
     mesh.geometry = geometry;
-    mesh.material = new MeshBasicMaterial({ vertexColors: true });
-    painted = mesh;
+    // toneMapped off for the same reason as the glow strips: the colours below
+    // are pushed past 1.0 so the bloom pass can see them
+    mesh.material = new MeshBasicMaterial({
+      vertexColors: true,
+      toneMapped: false,
+    });
   });
-  return painted;
 }
 
 // ------------------------------------------------------------------ props ---
 
-const FLOORS = 8;
+const FLOORS = 6;
 
+// The tower's glass is left as the night repaint made it — dark, reflecting
+// the dusk — and the colour goes on as light fittings instead.
+//
+// This started out repainting the curtain wall itself, one hue per floor.
+// Kenney's tower is nearly all glass, so that turned the whole building into
+// a stack of coloured stripes: the tower stopped being a tower and became a
+// swatch. Bands wrapped round it read as a lit building because the building
+// is still there behind them.
 function dressTower(root: Object3D) {
-  // Every floor its own colour, taken from the window quads the model already
-  // has — banding the outside would have been a stack of stripes bolted to a
-  // dark box; this is the building's own glass, lit.
-  //
-  // The floor picks the hue, the panel decides whether it's on. Lighting every
-  // panel of every floor made a candy-striped monolith: a tower reads as a
-  // tower because some of it is dark.
-  paintPanels(root, "window", (c, box) => {
-    const h = Math.max(1e-6, box.max.y - box.min.y);
-    const floor = Math.floor(((c.y - box.min.y) / h) * FLOORS);
-    const panel = hash(Math.round(c.x * 260), floor, Math.round(c.z * 260));
-    if (panel < 0.42) return DARK;
-    // barely lifted: these panels are large, and at the lift that suits a
-    // thin tube they came out pastel, which read as a painted building
-    return lit(HUES[floor % HUES.length], 0.08);
-  });
-
   inLocalFrame(root, (size) => {
+    // An open four-sided tube turned 45°, so its flats sit just off the
+    // tower's four walls: a ring of light round the building with no lid and
+    // no far wall to double up on.
+    const ring = (size.x / 2) * Math.SQRT2 * 1.03;
+    for (let i = 0; i < FLOORS; i++) {
+      const band = new Mesh(
+        new CylinderGeometry(ring, ring, size.y * 0.012, 4, 1, true),
+        glowMaterial(HUES[i % HUES.length], 0.06, 0.9, 1.5, FrontSide),
+      );
+      band.rotation.y = Math.PI / 4;
+      band.position.y = size.y * ((i + 0.7) / (FLOORS + 0.6));
+      // each band on its own clock, slower the higher it goes
+      root.add(pulsing(band, 0.16, 2.4 - i * 0.22, i * 1.7));
+    }
+
     // a crown, so the tallest thing on the island doesn't just stop
     const crown = new Mesh(
-      new BoxGeometry(size.x * 1.05, size.y * 0.016, size.z * 1.05),
-      glowMaterial(SIGN_CYAN, 0.12, 0.8),
+      new CylinderGeometry(
+        ring * 0.98,
+        ring * 0.98,
+        size.y * 0.016,
+        4,
+        1,
+        true,
+      ),
+      glowMaterial(SIGN_CYAN, 0.06, 0.85, 1.5, FrontSide),
     );
-    crown.position.y = size.y * 0.99;
+    crown.rotation.y = Math.PI / 4;
+    crown.position.y = size.y * 0.985;
     root.add(pulsing(crown, 0.18, 1.3, 0.4));
 
     // and a vertical sign running down one corner — the detail that makes a
@@ -231,8 +325,10 @@ function dressBlock(root: Object3D) {
       Math.round(c.y * 90),
       Math.round(c.z * 90),
     );
-    if (h < 0.14) return DARK;
-    return lit(HUES[Math.floor(h * HUES.length)], 0.1);
+    if (h < 0.16) return DARK;
+    // pushed past 1.0 so the bloom pass catches the lit panes; the dark ones
+    // stay where they are
+    return lit(HUES[Math.floor(h * HUES.length)], 0.1, 1.45);
   });
 
   inLocalFrame(root, (size) => {
@@ -254,10 +350,10 @@ function dressTaxi(root: Object3D) {
     if (!mesh.isMesh) return;
     const name = (mesh.material as MeshBasicMaterial)?.name;
     if (name === "Headlights") {
-      mesh.material = new MeshBasicMaterial({ color: lit(SIGN_CYAN, 0.3) });
+      mesh.material = unlitNeon(SIGN_CYAN, 0.3, 1.9); // headlights, brightest
       pulsing(mesh, 0.1, 3.4, 0.2);
     } else if (name === "TailLights") {
-      mesh.material = new MeshBasicMaterial({ color: lit("#ff2f4f", 0.3) });
+      mesh.material = unlitNeon("#ff2f4f", 0.2, 1.5);
       pulsing(mesh, 0.14, 2.6, 2.4);
     }
   });
@@ -279,7 +375,7 @@ function dressLamp(root: Object3D) {
   root.traverse((o) => {
     const mesh = o as Mesh;
     if (mesh.isMesh && (mesh.material as MeshBasicMaterial)?.name === "Light") {
-      mesh.material = new MeshBasicMaterial({ color: lit(SIGN_CYAN, 0.28) });
+      mesh.material = unlitNeon(SIGN_CYAN, 0.28, 1.8);
       heads.push(pulsing(mesh, 0.12, 2.2, 1.1));
     }
   });
@@ -306,10 +402,10 @@ function dressStall(root: Object3D) {
     if (!mesh.isMesh) return;
     const name = (mesh.material as MeshBasicMaterial)?.name;
     if (name === "RoofTiles_Red") {
-      mesh.material = new MeshBasicMaterial({ color: lit(SIGN_MAGENTA, 0.16) });
+      mesh.material = unlitNeon(SIGN_MAGENTA, 0.16, 1.35);
       pulsing(mesh, 0.16, 3.1, 2.2);
     } else if (name === "Beige") {
-      mesh.material = new MeshBasicMaterial({ color: lit(SIGN_CYAN, 0.16) });
+      mesh.material = unlitNeon(SIGN_CYAN, 0.16, 1.35);
       pulsing(mesh, 0.16, 3.1, 3.9);
     }
   });

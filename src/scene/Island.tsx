@@ -160,6 +160,7 @@ function CompletionSweep({
 // proud of the tile top and a hair wider than the cap instead.
 const KERB_H = 0.01;
 const KERB_R = HEX_R * 1.004;
+const KERB_GAIN = 1.5;
 
 function LitKerbs({ island, alive }: { island: IslandDef; alive: boolean }) {
   const mesh = useRef<InstancedMesh>(null);
@@ -180,7 +181,9 @@ function LitKerbs({ island, alive }: { island: IslandDef; alive: boolean }) {
       d.position.set(t.x, tileTop(t.kind) + KERB_H * 0.32, t.z);
       d.updateMatrix();
       inst.setMatrixAt(i, d.matrix);
-      inst.setColorAt(i, new Color(color));
+      // past 1.0 so the bloom pass can see it: the threshold is on luma, and
+      // a saturated magenta never reaches it at any opacity (neonDressing.ts)
+      inst.setColorAt(i, new Color(color).multiplyScalar(KERB_GAIN));
     });
     inst.instanceMatrix.needsUpdate = true;
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
