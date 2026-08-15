@@ -1,6 +1,6 @@
 import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { Group } from "three";
 import {
   AdditiveBlending,
@@ -647,6 +647,47 @@ function Sleeve({ record }: { record: RecordDef }) {
   );
 }
 
+// ------------------------------------------------------------------ hover --
+
+// Which frame the pointer is on, held outside React on purpose. Nothing about
+// hover needs a re-render — it moves a scale and a cursor — and re-rendering
+// the frame re-applies every prop on the picture lamp underneath it.
+const hoverState: { id: string | null } = { id: null };
+
+function takeHover(id: string) {
+  hoverState.id = id;
+  document.body.style.cursor = "pointer";
+}
+
+// Guarded, because an `out` for the frame you just left can arrive after the
+// `over` for the one you just reached.
+function releaseHover(id?: string) {
+  if (id !== undefined && hoverState.id !== id) return;
+  hoverState.id = null;
+  document.body.style.cursor = "auto";
+}
+
+// r3f only re-tests what's under the pointer while the canvas is receiving
+// pointermove, so the instant the pointer stops producing them — it crossed
+// onto one of the DOM overlays, or left the window entirely — no `pointerout`
+// is ever fired and whatever was hovered stays hovered, scaled up, forever.
+// r3f does not clear its own hover set on the canvas's pointerleave; that was
+// measured, not assumed. The unmount clear matters just as much: without it
+// the cursor stays a pointer for the whole run after you click a record.
+function useHoverRelease() {
+  const canvas = useThree((s) => s.gl.domElement);
+  useEffect(() => {
+    const clear = () => releaseHover();
+    canvas.addEventListener("pointerleave", clear);
+    window.addEventListener("blur", clear);
+    return () => {
+      canvas.removeEventListener("pointerleave", clear);
+      window.removeEventListener("blur", clear);
+      clear();
+    };
+  }, [canvas]);
+}
+
 // ----------------------------------------------------------------- plaques --
 
 function RecordFrame({
@@ -657,32 +698,43 @@ function RecordFrame({
   onStart: (record: RecordDef) => void;
 }) {
   const progress = loadProgress(record.id);
-  const [hover, setHover] = useState(false);
   const group = useRef<Group>(null);
-
-  useEffect(() => {
-    document.body.style.cursor = hover ? "pointer" : "auto";
-    return () => {
-      document.body.style.cursor = "auto";
-    };
-  }, [hover]);
 
   useFrame((_, delta) => {
     if (!group.current) return;
     const k = 1 - Math.exp(-12 * delta);
-    const s = hover ? 1.05 : 1;
+    const s = hoverState.id === record.id ? 1.05 : 1;
     group.current.scale.x += (s - group.current.scale.x) * k;
     group.current.scale.y = group.current.scale.x;
     group.current.scale.z = group.current.scale.x;
   });
 
   return (
-    <group
-      ref={group}
-      onClick={() => onStart(record)}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
+    <group ref={group}>
+      {/* One invisible pane carries every pointer handler, and none of the
+          frame's real geometry carries any. This is not a convenience: hung on
+          the group, `pointerout` fired every time the ray crossed from one
+          child mesh to the next — moulding to mount to glass — and r3f
+          delivers that `out` AFTER the `over` for the mesh you moved onto, so
+          sweeping across a frame left hover reading false more often than
+          true. The frame sat at 1.013 instead of 1.05 and jittered, which is
+          the "flickering light" as well: the lamp is inside this group and
+          the wobble moved it. One event object, one crossing, one out. */}
+      <mesh
+        position-z={FRONT_Z + 0.02}
+        onPointerOver={() => takeHover(record.id)}
+        onPointerOut={() => releaseHover(record.id)}
+        onClick={() => {
+          // the camera leaves, the pointer doesn't — so nothing would ever
+          // fire the `out` for the frame you just picked, and the cursor
+          // would stay a pointer over the ready card
+          releaseHover();
+          onStart(record);
+        }}
+      >
+        <planeGeometry args={[FRAME_SIZE, FRAME_SIZE]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
       <PictureLight />
       <Frame
         lit
@@ -726,6 +778,7 @@ export function WallScene({
   onStart: (record: RecordDef) => void;
 }) {
   const size = useThree((s) => s.size);
+  useHoverRelease();
 
   // fit the three-frame row: visible width at the wall camera distance is
   // 2·D·tan(fov/2)·aspect. SIDE_MARGIN is counted as part of the row, so the
