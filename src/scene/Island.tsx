@@ -6,10 +6,8 @@ import {
   CAP_H,
   HEX_R,
   ISLAND_BASE,
-  ISLAND_RADIUS,
-  TILES,
+  type IslandDef,
   tileTop,
-  type TileKind,
 } from "./islandLayout";
 
 // The terrain plate under the tiny world. Two instanced meshes and nothing
@@ -17,18 +15,13 @@ import {
 // The lip is a shallow prism rather than a flat cap so tile edges catch the
 // key light — that's what makes a hex plate read as tiles instead of a
 // painted pattern.
+//
+// The layout and palette come in as an IslandDef — one per record — and the
+// instance counts are baked at construction, so this component is remounted
+// (keyed on the record) rather than updated when the shelf selection changes.
 
 const SOIL = "#8a6440";
 
-const CAP: Record<TileKind, Color> = {
-  grass: new Color("#5f9c44"),
-  hill: new Color("#6cab4f"),
-  path: new Color("#b8925e"),
-  water: new Color("#3f83bd"),
-};
-
-// water gets a second tone to shimmer between
-const WATER_LIT = new Color("#6fb6e0");
 // the whole plate warms a shade when the world comes alive (spec §8.4)
 const ALIVE_TINT = new Color("#ffe9b0");
 
@@ -63,19 +56,18 @@ const ringFrag = /* glsl */ `
   }
 `;
 
-const SHADOW_R = ISLAND_RADIUS + 0.11;
-
-function ContactRing({ y }: { y: number }) {
+function ContactRing({ y, radius }: { y: number; radius: number }) {
+  const shadowR = radius + 0.11;
   const uniforms = useMemo(
     () => ({
-      uInner: { value: (ISLAND_RADIUS - 0.02) / SHADOW_R },
+      uInner: { value: (radius - 0.02) / shadowR },
       uStrength: { value: 0.42 },
     }),
-    [],
+    [radius, shadowR],
   );
   return (
     <mesh rotation-x={-Math.PI / 2} position-y={y}>
-      <planeGeometry args={[SHADOW_R * 2, SHADOW_R * 2]} />
+      <planeGeometry args={[shadowR * 2, shadowR * 2]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={ringVert}
@@ -93,7 +85,13 @@ function ContactRing({ y }: { y: number }) {
 // across the plate. The camera stays where it is — the world does the moving.
 const SWEEP_SECS = 1.1;
 
-function CompletionSweep({ alive }: { alive: boolean }) {
+function CompletionSweep({
+  alive,
+  radius,
+}: {
+  alive: boolean;
+  radius: number;
+}) {
   const ring = useRef<Mesh>(null);
   const startedAt = useRef<number | null>(null);
   const wasAlive = useRef(alive);
@@ -116,7 +114,7 @@ function CompletionSweep({ alive }: { alive: boolean }) {
       return;
     }
     m.visible = true;
-    m.scale.setScalar(0.06 + t * (ISLAND_RADIUS + 0.06));
+    m.scale.setScalar(0.06 + t * (radius + 0.06));
     (m.material as MeshBasicMaterial).opacity = 0.75 * (1 - t) ** 1.5;
   });
 
@@ -140,28 +138,40 @@ function CompletionSweep({ alive }: { alive: boolean }) {
 
 // -------------------------------------------------------------- the plate --
 
-export function Island({ alive }: { alive: boolean }) {
+export function Island({
+  island,
+  alive,
+}: {
+  island: IslandDef;
+  alive: boolean;
+}) {
+  const { tiles, radius, palette } = island;
   const caps = useRef<InstancedMesh>(null);
   const aliveMix = useRef(0);
+  const water = useMemo(() => new Color(palette.water), [palette.water]);
+  const waterLit = useMemo(() => new Color(island.waterLit), [island.waterLit]);
   const waterTiles = useMemo(
-    () => TILES.map((t, i) => ({ t, i })).filter(({ t }) => t.kind === "water"),
-    [],
+    () => tiles.map((t, i) => ({ t, i })).filter(({ t }) => t.kind === "water"),
+    [tiles],
   );
   const baseColors = useMemo(
     () =>
-      TILES.map((t) => {
-        const c = CAP[t.kind].clone();
-        if (t.kind === "grass" || t.kind === "hill")
+      tiles.map((t) => {
+        const c = new Color(palette[t.kind]);
+        // per-tile variation, so 31 identical hexes don't read as a
+        // gradientless slab — only on the ground cover, never on water or
+        // the worked surfaces
+        if (t.kind === "grass" || t.kind === "hill" || t.kind === "sand")
           c.offsetHSL(jitter(t.q, t.r) * 0.02, 0, jitter(t.r, t.q) * 0.05);
         return c;
       }),
-    [],
+    [tiles, palette],
   );
   const scratch = useMemo(() => new Color(), []);
 
   const layoutBody = (inst: InstancedMesh) => {
     const d = new Object3D();
-    TILES.forEach((t, i) => {
+    tiles.forEach((t, i) => {
       // the soil column runs from the label up to the underside of the lip;
       // the pond's lip nearly touches the label, so the column can vanish
       const capBottom = tileTop(t.kind) - CAP_H;
@@ -177,7 +187,7 @@ export function Island({ alive }: { alive: boolean }) {
 
   const layoutCaps = (inst: InstancedMesh) => {
     const d = new Object3D();
-    TILES.forEach((t, i) => {
+    tiles.forEach((t, i) => {
       d.position.set(t.x, tileTop(t.kind) - CAP_H / 2, t.z);
       d.updateMatrix();
       inst.setMatrixAt(i, d.matrix);
@@ -197,14 +207,14 @@ export function Island({ alive }: { alive: boolean }) {
     const t = clock.elapsedTime;
     for (const { t: tile, i } of waterTiles) {
       const s = 0.5 + 0.5 * Math.sin(t * 1.3 + tile.q * 2.1 + tile.r * 1.4);
-      scratch.copy(CAP.water).lerp(WATER_LIT, 0.25 + s * 0.45);
+      scratch.copy(water).lerp(waterLit, 0.25 + s * 0.45);
       if (aliveMix.current > 0.01)
         scratch.lerp(ALIVE_TINT, aliveMix.current * 0.08);
       inst.setColorAt(i, scratch);
     }
     // the land only needs repainting while the alive tint is still moving
     if (aliveMix.current > 0.01 && aliveMix.current < 0.995) {
-      TILES.forEach((tile, i) => {
+      tiles.forEach((tile, i) => {
         if (tile.kind === "water") return;
         scratch.copy(baseColors[i]).lerp(ALIVE_TINT, aliveMix.current * 0.1);
         inst.setColorAt(i, scratch);
@@ -215,9 +225,9 @@ export function Island({ alive }: { alive: boolean }) {
 
   return (
     <>
-      <ContactRing y={ISLAND_BASE + 0.001} />
+      <ContactRing y={ISLAND_BASE + 0.001} radius={radius} />
       <instancedMesh
-        args={[undefined, undefined, TILES.length]}
+        args={[undefined, undefined, tiles.length]}
         onUpdate={layoutBody}
       >
         <cylinderGeometry args={[HEX_R, HEX_R, 1, 6]} />
@@ -225,13 +235,13 @@ export function Island({ alive }: { alive: boolean }) {
       </instancedMesh>
       <instancedMesh
         ref={caps}
-        args={[undefined, undefined, TILES.length]}
+        args={[undefined, undefined, tiles.length]}
         onUpdate={layoutCaps}
       >
         <cylinderGeometry args={[HEX_R, HEX_R, CAP_H, 6]} />
         <meshStandardMaterial color="#ffffff" roughness={0.85} />
       </instancedMesh>
-      <CompletionSweep alive={alive} />
+      <CompletionSweep alive={alive} radius={radius} />
     </>
   );
 }

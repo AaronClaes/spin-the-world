@@ -6,7 +6,7 @@ import { songProgress } from "../game/clock";
 import { DISC_THICKNESS, RAD_PER_BEAT } from "../game/constants";
 import { clockState } from "../game/clockState";
 import { bandCenter, laneRadius } from "../game/geometry";
-import { meadow } from "../records/meadow";
+import { activeRun } from "../game/runState";
 
 // The listener (spec §8.2): KayKit's rig and run clip (CC0, Kay Lousberg),
 // reworked by scripts/build-runner.mjs — armor accessories and helmet gone,
@@ -31,7 +31,7 @@ const DISC_TOP = DISC_THICKNESS / 2;
 // The head bone sits at the head's base; the chibi head spans y 0→1.08 and
 // x ±0.54 in bone space. Band arc lies in the XY plane (ear to ear over the
 // crown); cups press onto the sides just proud of the head.
-function Headphones({ head }: { head: Object3D }) {
+function Headphones({ head, accent }: { head: Object3D; accent: string }) {
   return createPortal(
     <group position={[0, 0.5, 0.02]}>
       {/* band arcs over the crown */}
@@ -54,8 +54,8 @@ function Headphones({ head }: { head: Object3D }) {
           <mesh position-y={0.09}>
             <cylinderGeometry args={[0.2, 0.2, 0.02, 18]} />
             <meshStandardMaterial
-              color={meadow.accentColor}
-              emissive={meadow.accentColor}
+              color={accent}
+              emissive={accent}
               emissiveIntensity={0.6}
               roughness={0.4}
             />
@@ -82,17 +82,10 @@ export function Runner() {
   useFrame(() => {
     if (!group.current) return;
 
-    const progress = songProgress(clockState.beatPos, meadow.totalBeats);
-    const center = bandCenter(
-      progress,
-      meadow.band.startRadius,
-      meadow.band.endRadius,
-    );
-    const radius = laneRadius(
-      clockState.laneVisual,
-      center,
-      meadow.band.laneGap,
-    );
+    const { band, totalBeats, bpm } = activeRun.record;
+    const progress = songProgress(clockState.beatPos, totalBeats);
+    const center = bandCenter(progress, band.startRadius, band.endRadius);
+    const radius = laneRadius(clockState.laneVisual, center, band.laneGap);
     group.current.position.set(0, DISC_TOP, radius);
 
     const running = clockState.playing && !clockState.ended;
@@ -114,8 +107,8 @@ export function Runner() {
       // running. Softened, the spiral-in still slows the runner — gently.
       // Paused, the clip freezes mid-stride (spec §8.8) — the disc is frozen
       // too, so switching to Idle would read as the runner giving up.
-      const omega = RAD_PER_BEAT * (meadow.bpm / 60); // rad/s
-      const ref = meadow.band.startRadius;
+      const omega = RAD_PER_BEAT * (bpm / 60); // rad/s
+      const ref = band.startRadius;
       const soft = ref * Math.sqrt(Math.max(0, radius) / ref);
       actions.Running_A.timeScale = clockState.paused
         ? 0
@@ -126,7 +119,7 @@ export function Runner() {
   return (
     <group ref={group} rotation-y={Math.PI / 2} scale={RUNNER_SCALE}>
       <primitive object={scene} />
-      {head && <Headphones head={head} />}
+      {head && <Headphones head={head} accent={activeRun.record.accentColor} />}
       {/* contact shadow — a dark disc sprite, not a shadow map (spec §9) */}
       <mesh rotation-x={-Math.PI / 2} position-y={0.015}>
         <circleGeometry args={[0.9, 24]} />

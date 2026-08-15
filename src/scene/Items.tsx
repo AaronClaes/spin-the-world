@@ -186,7 +186,10 @@ function Notes() {
 // GLB — its node transform is the kitbash normalization, so we position a
 // wrapper and never touch the clone) over a soft accent ring.
 function GroovePiece({ piece }: { piece: RunItem }) {
-  const clone = usePropClone(piece.prop as string);
+  const clone = usePropClone(
+    piece.prop as string,
+    activeRun.record.dioramaModel,
+  );
   const group = useRef<Group>(null);
   const ring = useRef<Mesh>(null);
 

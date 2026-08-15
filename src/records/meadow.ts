@@ -51,5 +51,7 @@ export const meadow: RecordDef = {
     { fromBar: 38, toBar: 44, lanes: ["----x---", "x-------", "--------"] },
   ],
 
+  dioramaModel: "/models/meadow-diorama.glb",
+
   accentColor: "#ffd27a",
 };

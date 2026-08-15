@@ -31,6 +31,11 @@ export interface RecordDef {
   worldPieces: WorldPieceDef[];
   notePatterns: NotePattern[];
 
+  // GLB holding one named root node per world piece, kitbashed by
+  // scripts/build-diorama.mjs. The island layout for this record is keyed on
+  // the record id in scene/islandLayout.ts.
+  dioramaModel: string;
+
   accentColor: string; // per-record accent: lane guides, piece rings, runner
   // headphones (spec §9) — notes use the shared palette (scene/notePalette.ts)
 }

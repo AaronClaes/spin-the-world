@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { Group } from "three";
 import { DISC_RADIUS, DISC_THICKNESS, LABEL_RADIUS } from "../game/constants";
 import { loadProgress } from "../game/persistence";
-import { meadow } from "../records/meadow";
+import { RECORDS } from "../records";
+import type { RecordDef } from "../records/types";
 import { GrooveRings } from "./Disc";
 import { usePropClone } from "./dioramaProps";
 import { Island } from "./Island";
-import { placementFor } from "./islandLayout";
+import { type IslandDef, islandFor, placementFor } from "./islandLayout";
 
 // The studio wall as a real place (spec §8.7): records hang framed like
 // plaques. An uncompleted record hangs as its sleeve; a completed one is the
@@ -23,6 +24,10 @@ export const WALL_LOOK_AT: [number, number, number] = [0, WALL_Y - 0.12, 0];
 const FRAME_SIZE = 1.72;
 const FRAME_STEP = 2.34; // frame size + gap
 const SIDE_MARGIN = 1.7; // wall left of the first frame / right of the last
+const SLOTS = 3; // the row is always three plaques wide — records fill it
+// from the left and the rest hang as empty frames, so pressing another record
+// doesn't reflow the wall
+const ROMAN = ["I", "II", "III"];
 const ROW_Y = 0.12; // DOM title above, input hints below the plaques
 const MINI = 0.145; // disc radius 5 → 0.72, nearly filling the frame
 
@@ -67,10 +72,20 @@ function Frame({
 
 // One planted prop on the hanging record — the same authored island spot as
 // the game diorama, with the alive-world bob.
-function WallProp({ prop, index }: { prop: string; index: number }) {
-  const clone = usePropClone(prop);
+function WallProp({
+  prop,
+  island,
+  model,
+  index,
+}: {
+  prop: string;
+  island: IslandDef;
+  model: string;
+  index: number;
+}) {
+  const clone = usePropClone(prop, model);
   const group = useRef<Group>(null);
-  const spot = placementFor(prop);
+  const spot = placementFor(island, prop);
 
   useFrame(({ clock }) => {
     if (!group.current) return;
@@ -91,9 +106,10 @@ function WallProp({ prop, index }: { prop: string; index: number }) {
 
 // The completed record, hanging: the game disc's exact materials at trophy
 // scale, label facing out, turning slowly with its world alive on it.
-function HangingRecord() {
+function HangingRecord({ record }: { record: RecordDef }) {
   const spin = useRef<Group>(null);
-  const props = meadow.worldPieces.map((p) => p.prop);
+  const props = record.worldPieces.map((p) => p.prop);
+  const island = islandFor(record.id);
 
   useFrame((_, delta) => {
     if (spin.current) spin.current.rotation.y += delta * 0.22;
@@ -129,9 +145,15 @@ function HangingRecord() {
           <meshStandardMaterial color="#8a5a22" roughness={0.75} />
         </mesh>
         {/* the tiny world, planted and alive */}
-        <Island alive />
+        <Island island={island} alive />
         {props.map((prop, i) => (
-          <WallProp key={prop} prop={prop} index={i} />
+          <WallProp
+            key={prop}
+            prop={prop}
+            island={island}
+            model={record.dioramaModel}
+            index={i}
+          />
         ))}
       </group>
     </group>
@@ -160,8 +182,14 @@ function Sleeve() {
   );
 }
 
-function MeadowFrame({ onStart }: { onStart: () => void }) {
-  const progress = loadProgress(meadow.id);
+function RecordFrame({
+  record,
+  onStart,
+}: {
+  record: RecordDef;
+  onStart: (record: RecordDef) => void;
+}) {
+  const progress = loadProgress(record.id);
   const [hover, setHover] = useState(false);
   const group = useRef<Group>(null);
 
@@ -182,19 +210,20 @@ function MeadowFrame({ onStart }: { onStart: () => void }) {
   });
 
   return (
-    <group position-x={-FRAME_STEP}>
+    <group>
       <group
         ref={group}
-        onClick={onStart}
+        onClick={() => onStart(record)}
         onPointerOver={() => setHover(true)}
         onPointerOut={() => setHover(false)}
       >
-        {/* picture light for the one record that matters */}
+        {/* picture light — every pressed record gets one; the empty frames
+            stay in the room's ambient dark */}
         <pointLight position={[0.5, 0.7, 1.9]} intensity={6} color="#ffe2b0" />
         <Frame
           plaque={
             <div className="plaque">
-              <div className="plaque-title">{meadow.title}</div>
+              <div className="plaque-title">{record.title}</div>
               <div
                 className="plaque-stars"
                 aria-label={`${progress.stars} of 3 stars`}
@@ -213,14 +242,18 @@ function MeadowFrame({ onStart }: { onStart: () => void }) {
             </div>
           }
         >
-          {progress.completed ? <HangingRecord /> : <Sleeve />}
+          {progress.completed ? <HangingRecord record={record} /> : <Sleeve />}
         </Frame>
       </group>
     </group>
   );
 }
 
-export function WallScene({ onStart }: { onStart: () => void }) {
+export function WallScene({
+  onStart,
+}: {
+  onStart: (record: RecordDef) => void;
+}) {
   const size = useThree((s) => s.size);
 
   // fit the three-frame row: visible width at the wall camera distance is
@@ -228,7 +261,10 @@ export function WallScene({ onStart }: { onStart: () => void }) {
   // frames scale down to leave wall showing either side rather than running
   // to the screen edges — and keep shrinking on narrow viewports.
   const visW = 2 * 5.2 * Math.tan((42 / 2) * (Math.PI / 180));
-  const rowW = FRAME_SIZE * 3 + (FRAME_STEP - FRAME_SIZE) * 2 + SIDE_MARGIN * 2;
+  const rowW =
+    FRAME_SIZE * SLOTS +
+    (FRAME_STEP - FRAME_SIZE) * (SLOTS - 1) +
+    SIDE_MARGIN * 2;
   const fit = Math.min(1, (visW * (size.width / size.height)) / rowW);
 
   return (
@@ -247,20 +283,29 @@ export function WallScene({ onStart }: { onStart: () => void }) {
       <pointLight position={[0, -1.4, 3]} intensity={5} color="#e0b083" />
 
       <group scale={fit} position-y={ROW_Y}>
-        <MeadowFrame onStart={onStart} />
-        {["II", "III"].map((n, i) => (
-          <group key={n} position-x={i * FRAME_STEP}>
-            <Frame
-              plaque={
-                <div className="plaque">
-                  <div className="plaque-title dim">
-                    vol. {n} — still being pressed
-                  </div>
-                </div>
-              }
-            />
-          </group>
-        ))}
+        {Array.from({ length: SLOTS }, (_, i) => {
+          const record = RECORDS[i];
+          return (
+            <group
+              key={record?.id ?? `empty-${i}`}
+              position-x={(i - (SLOTS - 1) / 2) * FRAME_STEP}
+            >
+              {record ? (
+                <RecordFrame record={record} onStart={onStart} />
+              ) : (
+                <Frame
+                  plaque={
+                    <div className="plaque">
+                      <div className="plaque-title dim">
+                        vol. {ROMAN[i]} — still being pressed
+                      </div>
+                    </div>
+                  }
+                />
+              )}
+            </group>
+          );
+        })}
       </group>
     </group>
   );

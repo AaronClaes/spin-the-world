@@ -4,8 +4,8 @@ import { syncProbe } from "../audio/syncProbe";
 import { barBeat, songProgress } from "../game/clock";
 import { BEATS_PER_REV } from "../game/constants";
 import { clockState } from "../game/clockState";
+import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
-import { meadow } from "../records/meadow";
 
 const fmt = (n: number, d = 2) => n.toFixed(d);
 
@@ -27,8 +27,9 @@ export function DebugHud() {
   if (!clockState.playing) return null;
 
   const { bar, beat } = barBeat(clockState.beatPos);
-  const progress = songProgress(clockState.beatPos, meadow.totalBeats);
-  const totalPieces = meadow.worldPieces.length;
+  const { totalBeats, worldPieces } = activeRun.record;
+  const progress = songProgress(clockState.beatPos, totalBeats);
+  const totalPieces = worldPieces.length;
 
   return (
     <div className="hud">
@@ -43,7 +44,7 @@ export function DebugHud() {
         lane {lane} · notes {notesHit}✓ {notesMissed}✗
       </div>
       <div>
-        beatPos {fmt(clockState.beatPos)} / {meadow.totalBeats} · bar {bar + 1}:
+        beatPos {fmt(clockState.beatPos)} / {totalBeats} · bar {bar + 1}:
         {beat + 1} · rev {fmt(clockState.beatPos / BEATS_PER_REV, 1)}
       </div>
       <div>

@@ -4,7 +4,7 @@ import { Vector3 } from "three";
 import { songProgress } from "../game/clock";
 import { clockState } from "../game/clockState";
 import { bandCenter } from "../game/geometry";
-import { meadow } from "../records/meadow";
+import { activeRun } from "../game/runState";
 import { WALL_CAM_POS, WALL_LOOK_AT } from "./WallScene";
 
 // Two movements, both subtle (spec §8.6): a slow dolly tracking the band as
@@ -53,14 +53,10 @@ export function CameraRig() {
       camTarget.copy(WALL_POS);
       lookTarget.copy(WALL_LOOK);
     } else {
-      const progress = songProgress(clockState.beatPos, meadow.totalBeats);
-      const center = bandCenter(
-        progress,
-        meadow.band.startRadius,
-        meadow.band.endRadius,
-      );
-      const lean =
-        (clockState.laneVisual - 1) * meadow.band.laneGap * LEAN_FRACTION;
+      const { band, totalBeats } = activeRun.record;
+      const progress = songProgress(clockState.beatPos, totalBeats);
+      const center = bandCenter(progress, band.startRadius, band.endRadius);
+      const lean = (clockState.laneVisual - 1) * band.laneGap * LEAN_FRACTION;
 
       camTarget.set(-3.9, 3.1, center + 2.1 + lean);
       lookTarget.set(2.0, 0.1, center * 0.72 + lean);

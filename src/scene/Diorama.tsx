@@ -9,7 +9,8 @@ import { useGameStore } from "../game/store";
 import { usePropClone } from "./dioramaProps";
 import { activeFlights, FLIGHT_DURATION } from "./flights";
 import { Island } from "./Island";
-import { placementFor } from "./islandLayout";
+import { type IslandDef, islandFor, placementFor } from "./islandLayout";
+import { BEAM_NODE } from "./procProps";
 
 // The tiny world on the label (spec §8.4). Three states per piece, and the
 // point of the whole game is watching a piece move through them:
@@ -20,9 +21,9 @@ import { placementFor } from "./islandLayout";
 //   planted  — solid, with a landing puff, and alive from the moment it lands
 //
 // Props used to be scattered on a golden-angle spiral and frozen until all ten
-// were caught. Both are gone: positions are authored per prop in island.ts,
-// and every piece has an idle of its own (sails turn, sheep hop, smoke rises)
-// the instant it arrives.
+// were caught. Both are gone: positions are authored per prop per record in
+// islandLayout.ts, and every piece has an idle of its own (sails turn, sheep
+// hop, the lighthouse sweeps) the instant it arrives.
 
 const DISC_TOP = DISC_THICKNESS / 2;
 const ARC_HEIGHT = 0.85;
@@ -49,10 +50,10 @@ function repaint(root: Object3D, material: MeshBasicMaterial) {
 // One pre-cloned prop per world piece; a flight shows and moves its own prop.
 // The clone's node transform is the kitbash normalization — position the
 // wrapper, never the clone.
-function FlightProp({ prop }: { prop: string }) {
-  const clone = usePropClone(prop);
+function FlightProp({ prop, island }: { prop: string; island: IslandDef }) {
+  const clone = usePropClone(prop, activeRun.record.dioramaModel);
   const group = useRef<Group>(null);
-  const target = useMemo(() => placementFor(prop), [prop]);
+  const target = useMemo(() => placementFor(island, prop), [island, prop]);
 
   useFrame(({ clock }) => {
     const g = group.current;
@@ -98,7 +99,7 @@ function FlightProp({ prop }: { prop: string }) {
   );
 }
 
-function Flights() {
+function Flights({ island }: { island: IslandDef }) {
   const props = activeRun.record.worldPieces.map((p) => p.prop);
 
   useFrame(({ clock }) => {
@@ -113,7 +114,7 @@ function Flights() {
   return (
     <>
       {props.map((prop) => (
-        <FlightProp key={prop} prop={prop} />
+        <FlightProp key={prop} prop={prop} island={island} />
       ))}
     </>
   );
@@ -126,10 +127,18 @@ function Flights() {
 // separates it from the solid pieces standing next to it.
 const GHOST_OPACITY = 0.05;
 
-function GhostProp({ prop, collected }: { prop: string; collected: boolean }) {
-  const clone = usePropClone(prop);
+function GhostProp({
+  prop,
+  island,
+  collected,
+}: {
+  prop: string;
+  island: IslandDef;
+  collected: boolean;
+}) {
+  const clone = usePropClone(prop, activeRun.record.dioramaModel);
   const group = useRef<Group>(null);
-  const spot = useMemo(() => placementFor(prop), [prop]);
+  const spot = useMemo(() => placementFor(island, prop), [island, prop]);
   const material = useMemo(
     () =>
       new MeshBasicMaterial({
@@ -276,19 +285,29 @@ function LandingDust({ bornAt }: { bornAt: { current: number | null } }) {
 
 const ALIVE_HOP = 0.55; // the coordinated hop when the tenth piece lands
 
-function PlantedProp({ prop, alive }: { prop: string; alive: boolean }) {
-  const clone = usePropClone(prop);
+function PlantedProp({
+  prop,
+  island,
+  alive,
+}: {
+  prop: string;
+  island: IslandDef;
+  alive: boolean;
+}) {
+  const clone = usePropClone(prop, activeRun.record.dioramaModel);
   const group = useRef<Group>(null);
   const bornAt = useRef<number | null>(null);
   const aliveAt = useRef<number | null>(null);
   const wasAlive = useRef(alive);
-  const spot = useMemo(() => placementFor(prop), [prop]);
-  // the windmill's sails are their own node in the kitbash — the one part of
-  // any prop that can turn on its own
+  const spot = useMemo(() => placementFor(island, prop), [island, prop]);
+  // Parts that turn under their own power: the windmill's sails are their own
+  // node in the kitbash, the lighthouse's beam is its own node in the
+  // procedural build. Everything else moves as one piece.
   const sails = useMemo(
     () => clone.getObjectByName("building_windmill_top_fan_red") ?? null,
     [clone],
   );
+  const beam = useMemo(() => clone.getObjectByName(BEAM_NODE) ?? null, [clone]);
   const phase = useMemo(() => spot.x * 7.3 + spot.z * 4.1, [spot]);
 
   useFrame(({ clock }, delta) => {
@@ -336,6 +355,27 @@ function PlantedProp({ prop, alive }: { prop: string; alive: boolean }) {
         y += Math.sin(now * 1.3 + phase) * 0.004;
         g.rotation.y = spot.rot + Math.sin(now * 0.5 + phase) * 0.18;
         break;
+
+      // ---- harbour ----
+      case "lighthouse":
+        // the harbour's answer to the windmill: one slow sweep, quickening
+        // when the world wakes up
+        if (beam) beam.rotation.y += delta * (alive ? 0.85 : 0.55);
+        break;
+      case "sailboat":
+        // moored, so it rocks on its line rather than sailing anywhere
+        y += Math.sin(now * 1.15 + phase) * 0.006;
+        tilt = Math.sin(now * 0.9 + phase) * 0.05;
+        g.rotation.y = spot.rot + Math.sin(now * 0.35 + phase) * 0.13;
+        break;
+      case "palm":
+        // fronds catch more wind than a temperate tree does
+        tilt = Math.sin(now * 1.25 + phase) * 0.045;
+        break;
+      case "barrel":
+        // it never quite settled after being rolled off the boat
+        tilt = Math.sin(now * 1.9 + phase) * 0.02;
+        break;
       default:
         break;
     }
@@ -369,23 +409,31 @@ function PlantedProp({ prop, alive }: { prop: string; alive: boolean }) {
 // ------------------------------------------------------------- the world ----
 
 export function Diorama() {
-  const collected = useGameStore((s) => s.piecesCollected);
-  const props = activeRun.record.worldPieces.map((p) => p.prop);
+  const allCollected = useGameStore((s) => s.piecesCollected);
+  const record = activeRun.record;
+  const props = record.worldPieces.map((p) => p.prop);
+  const island = islandFor(record.id);
+  // A piece can only be planted if it belongs to this record's world. The
+  // store is cleared when a record is picked, so this should never filter
+  // anything out — but if the two ever drift, dropping a stray prop beats
+  // throwing inside the Canvas, which blanks the entire scene.
+  const collected = allCollected.filter((prop) => props.includes(prop));
   const alive = collected.length === props.length;
 
   return (
     <>
-      <Island alive={alive} />
-      <Flights />
+      <Island island={island} alive={alive} />
+      <Flights island={island} />
       {props.map((prop) => (
         <GhostProp
           key={`ghost-${prop}`}
           prop={prop}
+          island={island}
           collected={collected.includes(prop)}
         />
       ))}
       {collected.map((prop) => (
-        <PlantedProp key={prop} prop={prop} alive={alive} />
+        <PlantedProp key={prop} prop={prop} island={island} alive={alive} />
       ))}
     </>
   );

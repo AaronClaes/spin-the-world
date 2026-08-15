@@ -1,5 +1,5 @@
 import * as Tone from "tone";
-import { duckForSkip } from "../music/meadow";
+import { duckForSkip, songVoicing } from "../music/rig";
 
 // SFX (spec §8.5) — all synthesized, nothing loaded. They live on their own
 // channel to the destination, not the music master: the master swells and
@@ -11,10 +11,10 @@ import { duckForSkip } from "../music/meadow";
 
 const SFX_DB = -9;
 
-// G major pentatonic run — note pickups climb this as the combo grows, and a
-// combo break drops the next pickup back to the bottom. Matches the record's
-// key so pickups sit inside the music instead of on top of it.
-const PENTA_RUN = ["G4", "A4", "B4", "D5", "E5", "G5", "A5", "B5", "D6", "E6"];
+// Note pickups climb a pentatonic run as the combo grows, and a combo break
+// drops the next pickup back to the bottom. The run, the piece chime and the
+// low hits are the mounted song's — they follow the record's key so pickups
+// sit inside the music instead of on top of it (music/types.ts Voicing).
 
 let out: Tone.Channel | null = null;
 let pluck: Tone.PolySynth | null = null;
@@ -104,11 +104,10 @@ export function initSfx() {
 // combo 1 = bottom of the run.
 export function sfxNotePickup(combo: number) {
   if (!pluck) return;
-  const idx = Math.max(0, combo - 1) % PENTA_RUN.length;
-  const vel = 0.45 + 0.35 * (idx / (PENTA_RUN.length - 1));
-  safely(() =>
-    pluck?.triggerAttackRelease(PENTA_RUN[idx], "16n", undefined, vel),
-  );
+  const run = songVoicing().pickupRun;
+  const idx = Math.max(0, combo - 1) % run.length;
+  const vel = 0.45 + 0.35 * (idx / (run.length - 1));
+  safely(() => pluck?.triggerAttackRelease(run[idx], "16n", undefined, vel));
 }
 
 // A slow frame can resolve several items at once, so a mono synth can be
@@ -142,11 +141,12 @@ export function sfxPiecePickup() {
   if (!chime || !thump) return;
   const t = clearOf(lastPickupT, Tone.now(), 0.35);
   lastPickupT = t;
+  const { pieceChime, pieceThump } = songVoicing();
   safely(() => {
-    thump?.triggerAttackRelease("G1", "8n", t, 0.8);
-    chime?.triggerAttackRelease("G5", "8n", t, 0.7);
-    chime?.triggerAttackRelease("B5", "8n", t + 0.05, 0.55);
-    chime?.triggerAttackRelease("D6", "4n", t + 0.1, 0.65);
+    thump?.triggerAttackRelease(pieceThump, "8n", t, 0.8);
+    chime?.triggerAttackRelease(pieceChime[0], "8n", t, 0.7);
+    chime?.triggerAttackRelease(pieceChime[1], "8n", t + 0.05, 0.55);
+    chime?.triggerAttackRelease(pieceChime[2], "4n", t + 0.1, 0.65);
   });
 }
 
@@ -160,7 +160,7 @@ export function sfxRecordSkip() {
   safely(() => {
     scratch?.triggerAttackRelease(0.05, t, 1);
     scratch?.triggerAttackRelease(0.05, t + 0.09, 0.7);
-    thud?.triggerAttackRelease("G0", "8n", t + 0.015, 0.6);
+    thud?.triggerAttackRelease(songVoicing().skipThud, "8n", t + 0.015, 0.6);
   });
   duckForSkip();
 }
@@ -171,7 +171,7 @@ export function sfxNeedleDrop() {
   lastTickT = t + 0.41;
   safely(() => {
     tick?.triggerAttackRelease("32n", t, 0.9);
-    thump?.triggerAttackRelease("G1", "8n", t + 0.01, 0.35);
+    thump?.triggerAttackRelease(songVoicing().pieceThump, "8n", t + 0.01, 0.35);
     surface?.triggerAttackRelease("8n", t + 0.02, 0.8);
     // a couple of dust pops as the groove settles
     tick?.triggerAttackRelease("32n", t + 0.22, 0.5);

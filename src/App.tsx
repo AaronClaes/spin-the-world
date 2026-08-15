@@ -7,12 +7,13 @@ import {
 } from "./audio/transport";
 import { clockState } from "./game/clockState";
 import { saveRunResult } from "./game/persistence";
-import { resetActiveRun } from "./game/runState";
+import { activeRun, resetActiveRun, selectRecord } from "./game/runState";
 import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
 import { useLaneInput } from "./game/useLaneInput";
-import { applyStemUnlocks, resetAliveMix } from "./music/meadow";
-import { meadow } from "./records/meadow";
+import { applyStemUnlocks, resetAliveMix } from "./music/rig";
+import { RECORDS } from "./records";
+import type { RecordDef } from "./records/types";
 import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
 import { resetLastCatchColor } from "./scene/notePalette";
@@ -26,7 +27,6 @@ import { ResultsOverlay } from "./ui/ResultsOverlay";
 import { StudioWall } from "./ui/StudioWall";
 import { TouchControls } from "./ui/TouchControls";
 
-const MAX_SCORE = computeMaxScore(meadow);
 const NEEDLE_LIFT_MS = 1800; // let the tonearm lift before the results show
 const SHOW_DEBUG_HUD =
   typeof location !== "undefined" && location.search.includes("debug");
@@ -35,6 +35,9 @@ type Phase = "wall" | "ready" | "playing" | "results";
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("wall");
+  // The record being played. activeRun.record is the same value and is what
+  // frame-rate code reads; this copy exists so React re-renders on a swap.
+  const [record, setRecord] = useState<RecordDef>(RECORDS[0]);
   const [paused, setPaused] = useState(false);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const resultsTimer = useRef<number | null>(null);
@@ -46,15 +49,19 @@ export default function App() {
     clockState.ended = true;
     sfxNeedleLift();
     const s = useGameStore.getState();
-    const piecesTotal = meadow.worldPieces.length;
+    // read the record off the run rather than the closure — this fires from a
+    // Transport event scheduled a whole track ago
+    const played = activeRun.record;
+    const maxScore = computeMaxScore(played);
+    const piecesTotal = played.worldPieces.length;
     const completed = s.piecesCollected.length === piecesTotal;
     const stars = starsForRun(
       completed,
       s.score,
-      MAX_SCORE,
-      meadow.starThresholds,
+      maxScore,
+      played.starThresholds,
     );
-    const { progress, newHighScore } = saveRunResult(meadow.id, {
+    const { progress, newHighScore } = saveRunResult(played.id, {
       score: s.score,
       stars,
       completed,
@@ -62,7 +69,7 @@ export default function App() {
     setSummary({
       completed,
       score: s.score,
-      maxScore: MAX_SCORE,
+      maxScore,
       stars,
       bestCombo: s.bestCombo,
       notesHit: s.notesHit,
@@ -71,7 +78,7 @@ export default function App() {
       piecesTotal,
       newHighScore,
       highScore: progress.highScore,
-      starThresholds: meadow.starThresholds,
+      starThresholds: played.starThresholds,
     });
     resultsTimer.current = window.setTimeout(
       () => setPhase("results"),
@@ -82,7 +89,19 @@ export default function App() {
   // Picking a record off the wall dives the camera to the turntable but
   // doesn't drop the needle yet — the ready card (score to beat, how-to)
   // floats over the parked disc until the player starts.
-  const enterReady = useCallback(() => {
+  // Picking the record is what swaps the chart in — the ready card and the
+  // whole gameplay subtree read it from there.
+  //
+  // The store has to be cleared HERE, not in start(): the diorama renders
+  // during the ready phase, and a piecesCollected list left over from the
+  // previous record would have it trying to plant that record's props on this
+  // record's island.
+  const enterReady = useCallback((picked: RecordDef) => {
+    useGameStore.getState().resetRun();
+    clearFlights();
+    clearNotePops();
+    selectRecord(picked);
+    setRecord(picked);
     clockState.wall = false;
     setPhase("ready");
   }, []);
@@ -98,11 +117,11 @@ export default function App() {
     clearNotePops();
     resetLastCatchColor();
     useGameStore.getState().resetRun();
-    applyStemUnlocks(0, meadow.stemUnlockAtPieces, true);
+    applyStemUnlocks(0, record.stemUnlockAtPieces, true);
     resetAliveMix();
     clockState.ended = false;
     clockState.beatPos = 0;
-    await startPlayback(meadow, handleEnded);
+    await startPlayback(record, handleEnded);
     // Tone.start() has resolved inside startPlayback — safe to build SFX.
     initSfx();
     sfxNeedleDrop();
@@ -166,6 +185,7 @@ export default function App() {
   return (
     <>
       <Scene
+        record={record}
         wall={phase === "wall"}
         // stays mounted through "ready" so the dive pulls away from a real
         // wall instead of a void

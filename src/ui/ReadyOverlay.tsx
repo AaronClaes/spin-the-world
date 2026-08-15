@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { loadProgress } from "../game/persistence";
-import { meadow } from "../records/meadow";
+import { activeRun } from "../game/runState";
 
 interface Props {
   onStart: () => void;
@@ -12,8 +12,10 @@ interface Props {
 // the parked disc with the score to beat, the how-to, and the needle drop.
 // The Start click is the user gesture that unlocks the AudioContext.
 export function ReadyOverlay({ onStart, onBack }: Props) {
-  const progress = loadProgress(meadow.id);
-  const pieces = meadow.worldPieces.length;
+  // Mounted only after selectRecord() — activeRun.record is the pick.
+  const record = activeRun.record;
+  const progress = loadProgress(record.id);
+  const pieces = record.worldPieces.length;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -25,7 +27,7 @@ export function ReadyOverlay({ onStart, onBack }: Props) {
 
   return (
     <div className="overlay ready">
-      <h1 className="pop-in">{meadow.title}</h1>
+      <h1 className="pop-in">{record.title}</h1>
       <p className="verdict pop-in d1">
         {progress.highScore > 0 ? (
           <>

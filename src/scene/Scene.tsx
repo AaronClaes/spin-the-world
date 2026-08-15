@@ -19,10 +19,11 @@ import { getBeatPos } from "../audio/transport";
 import { clockState } from "../game/clockState";
 import type { ResolveEvent } from "../game/run";
 import { resolveCrossings } from "../game/run";
+import * as runState from "../game/runState";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
-import { meadow } from "../records/meadow";
-import { applyStemUnlocks, swellAliveMix } from "../music/meadow";
+import type { RecordDef } from "../records/types";
+import { applyStemUnlocks, swellAliveMix } from "../music/rig";
 import { CameraRig } from "./CameraRig";
 import { Disc } from "./Disc";
 import { LaneGuides } from "./LaneGuides";
@@ -48,8 +49,9 @@ function ClockDriver() {
       (lane - clockState.laneVisual) * (1 - Math.exp(-14 * delta));
 
     if (!clockState.playing) return;
+    const { bpm, totalBeats } = activeRun.record;
     // Clamp: the end-of-track pause lands a few ms after totalBeats.
-    clockState.beatPos = Math.min(getBeatPos(meadow.bpm), meadow.totalBeats);
+    clockState.beatPos = Math.min(getBeatPos(bpm), totalBeats);
 
     events.length = 0;
     resolveCrossings(activeRun, clockState.beatPos, lane, events);
@@ -107,16 +109,25 @@ function Sky() {
 
   useMemo(() => {
     scene.background = WALL_BG.clone();
-    // dev-only handles for headless scene inspection
+    // Dev-only handles for headless scene inspection. These exist because a
+    // dynamic import() from the console can resolve to a SECOND copy of a
+    // module — Vite serves HMR-invalidated modules from `?t=` URLs, so
+    // `import("/src/game/runState.ts")` hands back a fresh one whose
+    // activeRun is still the default record. Reading state through these
+    // handles is the only way to be sure you're looking at the running app.
     if (import.meta.env.DEV) {
       const w = window as unknown as {
         __scene: unknown;
         __cam: unknown;
         __store: unknown;
+        __run: unknown;
       };
       w.__scene = scene;
       w.__cam = camera;
       w.__store = useGameStore;
+      // the namespace object, not activeRun itself — it's reassigned on every
+      // record pick and replay, and a live binding only survives on the module
+      w.__run = runState;
     }
   }, [scene, camera]);
 
@@ -187,13 +198,15 @@ const MAX_DPR =
     : 2;
 
 export function Scene({
+  record,
   wall,
   wallMounted,
   onStart,
 }: {
+  record: RecordDef; // the pick — only used to key the gameplay subtree
   wall: boolean; // wall look (post stack) — true only on the title screen
   wallMounted: boolean; // wall geometry in the tree — also true mid-dive
-  onStart: () => void;
+  onStart: (record: RecordDef) => void;
 }) {
   return (
     <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
@@ -206,12 +219,20 @@ export function Scene({
 
       <Turntable />
       <Tonearm />
-      <NeedleNotes />
-      <NotePop />
-      <LaneGuides />
+      {/* Everything that bakes record data in at construction rather than
+          reading it per frame — instance counts, accent colours, the island
+          layout — is keyed on the record so switching records rebuilds it.
+          The wall is outside: it shows the whole shelf. */}
+      <group key={record.id}>
+        <NeedleNotes />
+        <NotePop />
+        <LaneGuides />
+        <Suspense fallback={null}>
+          <Disc />
+          <Runner />
+        </Suspense>
+      </group>
       <Suspense fallback={null}>
-        <Disc />
-        <Runner />
         {wallMounted && <WallScene onStart={onStart} />}
       </Suspense>
 
