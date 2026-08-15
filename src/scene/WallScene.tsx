@@ -583,9 +583,21 @@ function HangingRecord({
 }
 
 // The uncompleted record hangs as its sleeve: a kraft jacket, die-cut so the
-// vinyl and label show through. Sized and leaned exactly like the record it
-// replaces, so finishing a run swaps one object for another in the same mount
-// rather than rearranging the frame.
+// vinyl and label show through. Sized like the record it replaces, so
+// finishing a run swaps one object for another in the same mount rather than
+// rearranging the frame.
+//
+// It does NOT share the record's LEAN, and that is the one thing on this
+// object worth being careful about. Every reason LEAN exists is a reason about
+// a disc — angling a mirror up at the lamp, looking down into a diorama — and
+// none of them survive on flat matte kraft. What the lean did here was cost:
+// a plane tipped away from the camera keystones toward the vanishing point,
+// which for the outer two frames is off to the side, so their sleeves sheared
+// 11px sideways across a 232px square while the moulding around them stayed
+// perfectly upright. Square inside square, 2.7° out. The middle frame was fine
+// — it sits on the camera axis, where the shear cancels — which is exactly why
+// this read as "the outer ones are crooked" rather than as a lighting choice.
+// Flat against the mount, all three project as true rectangles.
 //
 // Deliberately unprinted. It used to carry the record's accent across the
 // foot, on the argument that the three sleeves have to be told apart from
@@ -611,7 +623,7 @@ function Sleeve() {
         feather={0.34}
         power={1.3}
       />
-      <group rotation-x={-LEAN}>
+      <group>
         <mesh>
           <planeGeometry args={[SLEEVE, SLEEVE]} />
           <meshStandardMaterial color="#6b5942" roughness={0.95} />
