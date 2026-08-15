@@ -415,6 +415,41 @@ canvas {
   font-size: 0.85rem;
 }
 
+/* The promise the wall makes before you commit three minutes to a record.
+   The row hangs in this order left to right, so the badges are a legend for
+   the shelf as much as a label on one plaque (records/index.ts). Muted, and
+   coloured by hue rather than by fill — a saturated pill on a lamp-lit wall
+   reads as UI stuck over the room, not as part of it. */
+.plaque-badge {
+  display: inline-block;
+  margin: 3px 0 1px;
+  padding: 1px 9px 2px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  text-transform: uppercase;
+}
+
+.plaque-badge.easy {
+  color: #a9cf94;
+  border-color: rgba(169, 207, 148, 0.42);
+  background: rgba(169, 207, 148, 0.1);
+}
+
+.plaque-badge.medium {
+  color: #ecc074;
+  border-color: rgba(236, 192, 116, 0.42);
+  background: rgba(236, 192, 116, 0.1);
+}
+
+.plaque-badge.hard {
+  color: #e8907f;
+  border-color: rgba(232, 144, 127, 0.42);
+  background: rgba(232, 144, 127, 0.1);
+}
+
 .plaque-stars {
   color: #ffd27a;
   letter-spacing: 0.18em;

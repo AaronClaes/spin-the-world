@@ -12,7 +12,7 @@ import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
 import { useLaneInput } from "./game/useLaneInput";
 import { applyStemUnlocks, resetAliveMix } from "./music/rig";
-import { RECORDS } from "./records";
+import { DEFAULT_RECORD } from "./records";
 import type { RecordDef } from "./records/types";
 import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
@@ -37,7 +37,7 @@ export default function App() {
   const [phase, setPhase] = useState<Phase>("wall");
   // The record being played. activeRun.record is the same value and is what
   // frame-rate code reads; this copy exists so React re-renders on a swap.
-  const [record, setRecord] = useState<RecordDef>(RECORDS[0]);
+  const [record, setRecord] = useState<RecordDef>(DEFAULT_RECORD);
   const [paused, setPaused] = useState(false);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const resultsTimer = useRef<number | null>(null);

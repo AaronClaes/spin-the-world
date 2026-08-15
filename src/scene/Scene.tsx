@@ -162,7 +162,9 @@ function Lights() {
     const dim = day ? sky.dim : 1;
     const k = 1 - Math.exp(-1.5 * delta);
     if (key.current) {
-      const target = (day ? (alive ? 3.2 : 2.5) : 3.1) * dim;
+      // the wall's key is only a bounce now — its picture lamps do the real
+      // work, and a strong global key flattened them back out (WallScene.tsx)
+      const target = (day ? (alive ? 3.2 : 2.5) : 1.1) * dim;
       key.current.intensity += (target - key.current.intensity) * k;
       key.current.color.lerp(
         day ? colorTarget.set(sky.key) : colorTarget.copy(LAMP_KEY),
@@ -175,7 +177,9 @@ function Lights() {
     }
     if (ambient.current)
       ambient.current.intensity +=
-        ((day ? (alive ? 1.0 : 0.8) * dim : 0.68) - ambient.current.intensity) *
+        // the wall's fill is ambient on purpose: it's the one light that lifts
+        // the mount board without leaving a second reflection in the lacquer
+        ((day ? (alive ? 1.0 : 0.8) * dim : 0.62) - ambient.current.intensity) *
         k;
     if (hemi.current) {
       hemi.current.intensity +=

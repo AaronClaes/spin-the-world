@@ -14,6 +14,7 @@ export const meadow: RecordDef = {
   id: "meadow",
   title: "Meadow 45",
   genre: "folk",
+  difficulty: "medium",
   bpm: 120,
   totalBeats: 176, // 44 bars, 22 revolutions, 88s at 120bpm
   // laneGap widened from 0.45 for readability (spec risk table); startRadius

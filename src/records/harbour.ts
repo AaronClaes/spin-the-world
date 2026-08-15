@@ -9,6 +9,7 @@ export const harbour: RecordDef = {
   id: "harbour",
   title: "Harbour 33",
   genre: "sea shanty",
+  difficulty: "easy",
   bpm: 100,
   totalBeats: 160, // 40 bars, 20 revolutions, 96s at 100bpm
   // identical band to Meadow: the disc geometry is shared and these radii were

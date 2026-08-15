@@ -30,10 +30,16 @@ export interface SkyPalette {
   dim: number; // scales every light's play-time intensity
 }
 
+// What the wall promises before you commit to three minutes. It's authored
+// rather than derived: tempo is most of the story but not all of it, and the
+// badge has to agree with the order the records hang in (records/index.ts).
+export type Difficulty = "easy" | "medium" | "hard";
+
 export interface RecordDef {
   id: string;
   title: string;
   genre: string;
+  difficulty: Difficulty;
   bpm: number;
   totalBeats: number; // must be a multiple of 16 (whole revolutions, whole 4-bar phrases)
   band: { startRadius: number; endRadius: number; laneGap: number };

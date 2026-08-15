@@ -10,17 +10,20 @@ Build spec: [musical-worlds.md](musical-worlds.md)
 
 ## Records
 
-Three are pressed, all playable from the start:
+Three are pressed, all playable from the start, and they hang on the wall left
+to right in the order they're listed here:
 
-|                | tempo                                   | world                                            |
-| -------------- | --------------------------------------- | ------------------------------------------------ |
-| **Meadow 45**  | 120bpm · 15 RPM · folk, G major         | a windmill village with a pond and a dirt track  |
-| **Harbour 33** | 100bpm · 12.5 RPM · sea shanty, D minor | a lighthouse coast with a jetty out over the bay |
-| **Neon 78**    | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign     |
+|                | badge  | tempo                                   | world                                            |
+| -------------- | ------ | --------------------------------------- | ------------------------------------------------ |
+| **Harbour 33** | easy   | 100bpm · 12.5 RPM · sea shanty, D minor | a lighthouse coast with a jetty out over the bay |
+| **Meadow 45**  | medium | 120bpm · 15 RPM · folk, G major         | a windmill village with a pond and a dirt track  |
+| **Neon 78**    | hard   | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign     |
 
 BPM sets RPM — eight beats to a revolution — so the 33 is a genuinely calmer
 record to stand on as well as a slower tune, and the 78 is the hard one: more
-notes, and stems that only unlock on the ninth of ten world pieces.
+notes, and stems that only unlock on the ninth of ten world pieces. The badges
+are authored per record rather than derived from tempo, and a test keeps them
+in the same order as the wall.
 
 ## How to play
 

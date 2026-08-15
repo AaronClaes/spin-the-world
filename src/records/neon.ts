@@ -16,6 +16,7 @@ export const neon: RecordDef = {
   id: "neon",
   title: "Neon 78",
   genre: "city pop",
+  difficulty: "hard",
   bpm: 140,
   totalBeats: 192, // 48 bars, 24 revolutions, 82s at 140bpm
   // identical band to the other two: the disc geometry is shared and these

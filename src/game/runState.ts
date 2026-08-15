@@ -1,4 +1,4 @@
-import { RECORDS } from "../records";
+import { DEFAULT_RECORD } from "../records";
 import type { RecordDef } from "../records/types";
 import { createRun } from "./run";
 import type { RunState } from "./run";
@@ -12,7 +12,7 @@ import type { RunState } from "./run";
 // subtree on the record id: picking a different record remounts the parts that
 // bake record data in at construction (instance counts, accent colours, the
 // island layout).
-export let activeRun: RunState = createRun(RECORDS[0]);
+export let activeRun: RunState = createRun(DEFAULT_RECORD);
 
 // Picking a record off the wall. Also where a record that wasn't loaded at
 // startup gets its chart validated — a broken chart throws here, loudly.

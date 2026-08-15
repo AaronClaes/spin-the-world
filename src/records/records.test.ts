@@ -6,7 +6,7 @@ import { songFor } from "../music";
 import { islandFor } from "../scene/islandLayout";
 import { DRESSING } from "../scene/neonDressing";
 import { PROC_PROPS } from "../scene/procProps";
-import { RECORDS, recordById } from ".";
+import { DEFAULT_RECORD, RECORDS, recordById } from ".";
 
 // Root node names in a .glb, read straight out of the embedded JSON chunk.
 // Pulling in a GLTF parser for this would be overkill: the header is 12 bytes
@@ -29,9 +29,24 @@ describe("the shelf", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("resolves ids, and falls back to the first record for an unknown one", () => {
+  it("resolves ids, and falls back to the default record for an unknown one", () => {
     for (const record of RECORDS) expect(recordById(record.id)).toBe(record);
-    expect(recordById("no-such-record")).toBe(RECORDS[0]);
+    expect(recordById("no-such-record")).toBe(DEFAULT_RECORD);
+  });
+
+  // The wall hangs RECORDS in array order and prints each record's own badge
+  // under it, so the two can disagree silently: re-hang the row and the
+  // badges read easy, hard, medium. They're one promise made twice.
+  it("hangs left to right in ascending difficulty", () => {
+    expect(RECORDS.map((r) => r.difficulty)).toEqual([
+      "easy",
+      "medium",
+      "hard",
+    ]);
+    // and the badge has to be honest about the thing the player will feel
+    // first — how fast the floor is moving under them
+    const bpms = RECORDS.map((r) => r.bpm);
+    expect(bpms).toEqual([...bpms].sort((a, b) => a - b));
   });
 
   it.each(RECORDS.map((r) => [r.id, r] as const))(

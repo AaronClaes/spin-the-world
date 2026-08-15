@@ -25,7 +25,16 @@ const rand = (i: number, salt: number) => {
   return x - Math.floor(x);
 };
 
-export function GrooveRings() {
+// The wall's hanging record reuses this, but under a much darker vinyl and a
+// single warm lamp — the play-time values wash out to brown there, so it takes
+// its own pair (scene/WallScene.tsx).
+export function GrooveRings({
+  color = "#23262e",
+  roughness = 0.45,
+}: {
+  color?: string;
+  roughness?: number;
+} = {}) {
   const geometry = useMemo(() => {
     const rings = [];
     for (let r = LABEL_RADIUS + 0.22; r < DISC_RADIUS - 0.18; r += 0.155) {
@@ -42,7 +51,11 @@ export function GrooveRings() {
       rotation-x={-Math.PI / 2}
       position-y={DISC_TOP + 0.0012}
     >
-      <meshStandardMaterial color="#23262e" roughness={0.45} metalness={0.1} />
+      <meshStandardMaterial
+        color={color}
+        roughness={roughness}
+        metalness={0.1}
+      />
     </mesh>
   );
 }
