@@ -81,6 +81,26 @@ export function mountSong(next: SongDef): void {
 
 export const songVoicing = (): Voicing => song?.voicing ?? FALLBACK_VOICING;
 
+// Which arrangement is on the desk. The wall needs it to tell "select the
+// record already playing" from "swap the record", and only the second one
+// should touch the audio at all.
+export const mountedSongId = (): string | null => song?.id ?? null;
+
+// The preview's fade, either direction. Every Part starts at 0 and 0 is a
+// downbeat, so a loop that begins at full level begins on the hardest hit in
+// the bar — which is a pop, not a start. Ramping the master rather than the
+// stems keeps the stem levels meaning exactly one thing (what's unlocked), and
+// leaves the SFX alone: they run to the destination on their own channel.
+export function fadeMasterOut(seconds: number): void {
+  master?.volume.rampTo(LOCKED_DB, seconds);
+}
+
+export function fadeMasterIn(seconds: number): void {
+  if (!master) return;
+  master.volume.value = LOCKED_DB;
+  master.volume.rampTo(masterTarget, seconds);
+}
+
 // Volume-ramp every stem to match the collected-piece count (spec §8.5).
 // Idempotent — ramping to the level a stem is already at is a no-op sound-
 // wise, so callers can invoke this on every collect.
@@ -101,6 +121,12 @@ export function applyStemUnlocks(
 // Debug/HUD: current stem channel volumes in dB.
 export function stemVolumes(): number[] {
   return stems.map((ch) => ch.volume.value);
+}
+
+// Same, for the master — the preview fade and the skip duck both live here,
+// and neither is observable from anywhere else.
+export function masterVolumeDb(): number {
+  return master?.volume.value ?? Number.NaN;
 }
 
 // Full completion: the mix swells with the world (spec §8.4).

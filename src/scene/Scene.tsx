@@ -25,7 +25,11 @@ import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
 import { DAYLIGHT, skyFor } from "../records/sky";
 import type { RecordDef } from "../records/types";
-import { applyStemUnlocks, swellAliveMix } from "../music/rig";
+import {
+  applyStemUnlocks,
+  masterVolumeDb,
+  swellAliveMix,
+} from "../music/rig";
 import { CameraRig } from "./CameraRig";
 import { Disc } from "./Disc";
 import { LaneGuides } from "./LaneGuides";
@@ -139,6 +143,7 @@ function Sky() {
         __store: unknown;
         __run: unknown;
         __transport: unknown;
+        __mix: unknown;
       };
       w.__scene = scene;
       w.__cam = camera;
@@ -146,6 +151,7 @@ function Sky() {
       // The clock, for the same reason: whether the wall preview is actually
       // running is otherwise unobservable from outside the audio graph.
       w.__transport = getTransport();
+      w.__mix = masterVolumeDb;
       // the namespace object, not activeRun itself — it's reassigned on every
       // record pick and replay, and a live binding only survives on the module
       w.__run = runState;

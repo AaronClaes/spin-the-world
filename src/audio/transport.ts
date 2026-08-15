@@ -1,7 +1,14 @@
 import * as Tone from "tone";
 import { beatsToSeconds, secondsToBeats } from "../game/clock";
 import { songFor } from "../music";
-import { applyStemUnlocks, mountSong, resetAliveMix } from "../music/rig";
+import {
+  applyStemUnlocks,
+  fadeMasterIn,
+  fadeMasterOut,
+  mountSong,
+  mountedSongId,
+  resetAliveMix,
+} from "../music/rig";
 import type { RecordDef } from "../records/types";
 import { syncProbe } from "./syncProbe";
 
@@ -16,6 +23,15 @@ let endEventId: number | null = null;
 // The drift probe is scheduled once and outlives any single run, so it can't
 // close over a record — records differ in bpm.
 let currentBpm = 120;
+
+// Rising into a loop reads as a record being cued rather than switched on, so
+// the fade in is generous; the fade out only has to outrun a click, and every
+// millisecond of it is a millisecond the wall answers your click in silence.
+const PREVIEW_FADE_S = 0.7;
+const SWAP_FADE_S = 0.14;
+// Bumped by anything that takes ownership of the desk, so an in-flight swap
+// can tell it has been overtaken.
+let previewSwap = 0;
 
 // The wall preview: the record you just selected, playing while you decide.
 //
@@ -34,6 +50,25 @@ let currentBpm = 120;
 export async function startPreview(record: RecordDef): Promise<void> {
   await Tone.start();
   const transport = Tone.getTransport();
+
+  // Clicking the record that's already playing is not a request to hear it
+  // again from the top. Without this, re-selecting restarts the loop — a
+  // rewind to a downbeat, which is the one edit that always sounds like a
+  // mistake.
+  if (mountedSongId() === record.id && transport.state === "started") return;
+
+  // A swap fades the old bed down before tearing it off the desk. mountSong
+  // disposes the synths outright, so a Part mid-note is cut where it stands —
+  // and a waveform truncated mid-cycle is a click. Short enough that the
+  // frame lifting on screen still reads as the same gesture as the sound.
+  const token = ++previewSwap;
+  if (transport.state === "started") {
+    fadeMasterOut(SWAP_FADE_S);
+    await new Promise((r) => setTimeout(r, SWAP_FADE_S * 1000 + 20));
+    // Two records clicked in quick succession, or play pressed mid-fade: the
+    // later intent owns the desk and this continuation must not stomp it.
+    if (token !== previewSwap) return;
+  }
 
   // Park it before mounting: mountSong's contract is that every Part starts
   // from a stopped Transport, and unlike startPlayback this can be called
@@ -57,6 +92,7 @@ export async function startPreview(record: RecordDef): Promise<void> {
   resetAliveMix();
 
   transport.start();
+  fadeMasterIn(PREVIEW_FADE_S);
 }
 
 export function stopPreview(): void {
@@ -69,6 +105,9 @@ export function stopPreview(): void {
 // everything else.
 export async function startPlayback(record: RecordDef, onEnded: () => void) {
   await Tone.start();
+  // The run owns the desk from here — a preview swap still waiting out its
+  // fade must not mount a record over the top of the one being played.
+  previewSwap++;
   const transport = Tone.getTransport();
   currentBpm = record.bpm;
   transport.bpm.value = record.bpm;
