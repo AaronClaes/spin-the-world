@@ -1,7 +1,12 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import type { Group, Mesh, MeshStandardMaterial } from "three";
-import { Shape, ShapeGeometry } from "three";
+import type {
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+} from "three";
+import { Color, Shape, ShapeGeometry } from "three";
 import { DISC_THICKNESS } from "../game/constants";
 import { itemRadius } from "../game/geometry";
 import type { RunItem } from "../game/items";
@@ -25,6 +30,9 @@ const POOL = 8;
 const LIFE = 0.55; // coin hop duration
 const STAR_LIFE = 0.34; // each sparkle's twinkle
 const MAX_STARS = 6;
+
+// what a sparkle mixes toward for its highlight end
+const STAR_HIGHLIGHT = new Color("#fffdf4");
 
 interface Pop {
   lane: RunItem["lane"];
@@ -114,7 +122,21 @@ export function NotePop() {
         mat.color.copy(c);
         mat.emissive.copy(c);
       }
-      bursts.current[free]?.position.set(0, CATCH_Y, r);
+      const burstGroup = bursts.current[free];
+      if (burstGroup) {
+        burstGroup.position.set(0, CATCH_Y, r);
+        // the twinkles are shades of the note you just caught — each star
+        // mixed a different distance toward white, so the burst reads as one
+        // colour with highlights rather than six identical marks
+        const base = noteColor(pop.beat, pop.lane);
+        for (let k = 0; k < MAX_STARS; k++) {
+          const mat = (burstGroup.children[k] as Mesh)
+            .material as MeshBasicMaterial;
+          mat.color
+            .copy(base)
+            .lerp(STAR_HIGHLIGHT, (jitter(pop.beat + k * 7, 5) + 0.5) * 0.7);
+        }
+      }
     }
 
     for (let i = 0; i < POOL; i++) {
@@ -169,8 +191,8 @@ export function NotePop() {
         // twinkle: in fast, out soft; billboarded, alternating tilt
         star.quaternion.copy(camera.quaternion);
         star.rotateZ(k * 0.7 + u * 0.5);
-        // per-star size variety around a smaller median (0.04–0.09)
-        const starSize = 0.065 + jitter(seed, 4) * 0.05;
+        // per-star size variety around a small median (0.02–0.045)
+        const starSize = 0.0325 + jitter(seed, 4) * 0.025;
         star.scale.setScalar(starSize * size * Math.sin(Math.PI * u));
       }
     }

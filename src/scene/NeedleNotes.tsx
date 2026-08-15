@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { Group, Mesh } from "three";
-import { MeshBasicMaterial } from "three";
+import { Color, MeshBasicMaterial } from "three";
 import { clockState } from "../game/clockState";
 import {
   DISC_THICKNESS,
@@ -25,6 +25,9 @@ import { NOTE_PALETTE } from "./notePalette";
 
 const DISC_TOP = DISC_THICKNESS / 2;
 const NEEDLE_ANGLE = NEEDLE_LEAD_BEATS * RAD_PER_BEAT; // 90° — needle on +X
+
+// what the glint mixes toward, so a palette colour still reads as glowing
+const GLINT_HEAT = new Color("#fff8e4");
 
 const POOL = 6;
 const LIFE = 1.5; // seconds a note lives
@@ -93,12 +96,22 @@ function Note({
   );
 }
 
+// The colour the NEXT spawn will use. Dealt one ahead so the contact glint
+// can wear it — the ball under the stylus is a preview of the note about to
+// pop out, and flicks to the following colour the instant one leaves.
+const dealColor = (seed: number, previous: number) => {
+  const c = Math.floor((jitter(seed, 5) + 0.5) * NOTE_PALETTE.length);
+  // nudge so two notes in a row never share a colour
+  return c === previous ? (c + 1) % NOTE_PALETTE.length : c;
+};
+
 export function NeedleNotes() {
   const notes = useRef<(Group | null)[]>([]);
   const glint = useRef<Mesh>(null);
   const prevBeat = useRef(-1);
   const spawned = useRef(0);
-  const prevColor = useRef(-1);
+  // seed 1 is what the first spawn will get (spawned is incremented first)
+  const nextColor = useRef(dealColor(1, -1));
 
   const slots = useMemo<Slot[]>(
     () =>
@@ -118,6 +131,12 @@ export function NeedleNotes() {
       ),
     [],
   );
+  // kept off white so it still reads as a hot contact point rather than a
+  // floating bead of paint
+  const glintMaterial = useMemo(
+    () => new MeshBasicMaterial({ color: "#fff3cf" }),
+    [],
+  );
 
   useFrame(({ camera }, delta) => {
     const touching =
@@ -125,12 +144,15 @@ export function NeedleNotes() {
     const nx = Math.sin(NEEDLE_ANGLE) * needleRadius();
     const nz = Math.cos(NEEDLE_ANGLE) * needleRadius();
 
-    // contact glint — swells on each pulse
+    // contact glint — swells on each pulse, and wears the next note's colour
     if (glint.current) {
       glint.current.visible = touching;
       glint.current.position.set(nx, DISC_TOP + 0.02, nz);
       const frac = clockState.beatPos - Math.floor(clockState.beatPos);
       glint.current.scale.setScalar(1 + 0.5 * Math.exp(-frac * 5));
+      glintMaterial.color
+        .set(NOTE_PALETTE[nextColor.current])
+        .lerp(GLINT_HEAT, 0.35);
     }
 
     // beat edge → spawn (prevBeat resets when a restart rewinds beatPos)
@@ -146,12 +168,10 @@ export function NeedleNotes() {
         slot.active = true;
         slot.age = 0;
         slot.seed = spawned.current;
-        // deal a palette colour per spawn — hashed, so replays match, with
-        // a nudge so two notes in a row never share a colour
-        let c = Math.floor((jitter(slot.seed, 5) + 0.5) * NOTE_PALETTE.length);
-        if (c === prevColor.current) c = (c + 1) % NOTE_PALETTE.length;
-        prevColor.current = c;
+        // the colour the glint has been advertising, then deal the next one
+        const c = nextColor.current;
         materials[i].color.set(NOTE_PALETTE[c]);
+        nextColor.current = dealColor(spawned.current + 1, c);
         // spawn a touch along the groove's travel so the arm doesn't hide it
         g.position.set(nx, DISC_TOP + 0.06, nz + 0.2);
         g.visible = true;
@@ -187,9 +207,8 @@ export function NeedleNotes() {
 
   return (
     <group>
-      <mesh ref={glint} visible={false}>
+      <mesh ref={glint} visible={false} material={glintMaterial}>
         <sphereGeometry args={[0.05, 10, 8]} />
-        <meshBasicMaterial color="#fff3cf" />
       </mesh>
       {Array.from({ length: POOL }, (_, i) => (
         <Note

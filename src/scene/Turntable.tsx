@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { Group, InstancedMesh, Object3D } from "three";
+import { Color, Group, InstancedMesh, Object3D } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { clockState } from "../game/clockState";
 import { DISC_THICKNESS } from "../game/constants";
@@ -32,6 +32,67 @@ const CHARCOAL = "#3b3f49";
 const ORANGE = "#e08a3c";
 
 const STROBE_COUNT = 40;
+
+// ---------------------------------------------------------------- shadows --
+
+// Nothing in this scene casts a real shadow (no shadow maps — the budget says
+// mid-range phone, spec §9), so the platter's contact with the deck is faked
+// with a soft radial disc. Without it the vinyl reads as printed on the
+// plinth rather than resting on it.
+const shadowVert = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const shadowFrag = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uStrength;
+  uniform float uCore;
+  varying vec2 vUv;
+  void main() {
+    float d = length(vUv - 0.5) * 2.0; // 0 centre … 1 rim
+    gl_FragColor = vec4(uColor, smoothstep(1.0, uCore, d) * uStrength);
+  }
+`;
+
+function SoftShadow({
+  radius,
+  position,
+  strength,
+  core,
+  color = "#241c10",
+}: {
+  radius: number;
+  position: [number, number, number];
+  strength: number;
+  core: number; // fraction of the radius held at full strength
+  color?: string;
+}) {
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new Color(color) },
+      uStrength: { value: strength },
+      uCore: { value: core },
+    }),
+    [color, strength, core],
+  );
+
+  return (
+    <mesh rotation-x={-Math.PI / 2} position={position}>
+      <planeGeometry args={[radius * 2, radius * 2]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={shadowVert}
+        fragmentShader={shadowFrag}
+        transparent
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
 
 // Strobe dots on the slipmat ring that shows around the vinyl — the retro
 // platter-rim detail, and a spin cue right at the rim.
@@ -138,6 +199,16 @@ export function Turntable() {
           <meshStandardMaterial color={CHARCOAL} roughness={0.8} />
         </mesh>
       ))}
+
+      {/* The platter's contact shadow, reaching just past its rim. A second
+          one under the whole deck was tried and cut: the play camera looks
+          down at ~24°, so the plinth occludes every pixel of it. */}
+      <SoftShadow
+        radius={6.6}
+        position={[0, DECK_TOP + 0.004, 0]}
+        strength={0.5}
+        core={0.78}
+      />
 
       <Platter />
 

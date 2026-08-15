@@ -7,12 +7,7 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { Suspense, useMemo, useRef } from "react";
-import type {
-  AmbientLight,
-  DirectionalLight,
-  HemisphereLight,
-  Points,
-} from "three";
+import type { AmbientLight, DirectionalLight, HemisphereLight } from "three";
 import { Color } from "three";
 import {
   sfxNoteMiss,
@@ -179,52 +174,6 @@ function Lights() {
   );
 }
 
-// The record floats in open sky with a scatter of dust motes — free
-// atmosphere (spec §9), and the slow counter-drift makes the disc's spin
-// read even at the rim. Tinted just below the sky so they read as specks
-// drifting in the sunlight.
-const MOTE_COUNT = 160;
-
-function DustMotes() {
-  const points = useRef<Points>(null);
-
-  const positions = useMemo(() => {
-    const p = new Float32Array(MOTE_COUNT * 3);
-    const r = (i: number, salt: number) => {
-      const x = Math.sin(i * 91.7 + salt * 47.9) * 24634.6345;
-      return x - Math.floor(x);
-    };
-    for (let i = 0; i < MOTE_COUNT; i++) {
-      p[i * 3] = (r(i, 1) - 0.5) * 16;
-      p[i * 3 + 1] = r(i, 2) * 6 - 0.5;
-      p[i * 3 + 2] = (r(i, 3) - 0.5) * 16;
-    }
-    return p;
-  }, []);
-
-  useFrame(({ clock }, delta) => {
-    if (!points.current) return;
-    points.current.rotation.y -= delta * 0.012;
-    points.current.position.y = Math.sin(clock.elapsedTime * 0.13) * 0.15;
-  });
-
-  return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#8ba6bd"
-        size={0.022}
-        sizeAttenuation
-        transparent
-        opacity={0.5}
-        depthWrite={false}
-      />
-    </points>
-  );
-}
-
 // Touch devices get a lower DPR cap — post passes scale with pixels, and the
 // budget says playable on a mid-range phone, not pretty on one (spec §9).
 const MAX_DPR =
@@ -249,7 +198,6 @@ export function Scene({
       <ClockDriver />
       <CameraRig />
       <Lights />
-      <DustMotes />
 
       <Turntable />
       <Tonearm />
