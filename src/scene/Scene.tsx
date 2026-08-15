@@ -109,9 +109,14 @@ function Sky() {
     scene.background = WALL_BG.clone();
     // dev-only handles for headless scene inspection
     if (import.meta.env.DEV) {
-      const w = window as unknown as { __scene: unknown; __cam: unknown };
+      const w = window as unknown as {
+        __scene: unknown;
+        __cam: unknown;
+        __store: unknown;
+      };
       w.__scene = scene;
       w.__cam = camera;
+      w.__store = useGameStore;
     }
   }, [scene, camera]);
 

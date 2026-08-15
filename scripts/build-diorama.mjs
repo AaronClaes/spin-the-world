@@ -16,10 +16,10 @@ import {
 // height = target world-unit height on the label; width = normalize by x
 // instead (flat props). pick = take one named node out of a multi-prop file.
 const PROPS = [
-  { name: "mill", file: "building_windmill_red.gltf", height: 0.52 },
+  { name: "mill", file: "building_windmill_red.gltf", height: 0.44 },
   { name: "cottage", file: "building_home_A_red.gltf", height: 0.3 },
-  { name: "oak", file: "tree_single_A.gltf", height: 0.38 },
-  { name: "birch", file: "tree_single_B.gltf", height: 0.42 },
+  { name: "oak", file: "tree_single_A.gltf", height: 0.3 },
+  { name: "birch", file: "tree_single_B.gltf", height: 0.33 },
   { name: "well", file: "building_well_red.gltf", height: 0.2 },
   { name: "fence", file: "fence_stone_straight.gltf", height: 0.09 },
   { name: "haycart", file: "wheelbarrow.gltf", height: 0.15 },

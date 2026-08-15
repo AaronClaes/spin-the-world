@@ -6,8 +6,9 @@ import { DISC_RADIUS, DISC_THICKNESS, LABEL_RADIUS } from "../game/constants";
 import { loadProgress } from "../game/persistence";
 import { meadow } from "../records/meadow";
 import { GrooveRings } from "./Disc";
-import { slotPosition } from "./Diorama";
 import { usePropClone } from "./dioramaProps";
+import { Island } from "./Island";
+import { placementFor } from "./islandLayout";
 
 // The studio wall as a real place (spec §8.7): records hang framed like
 // plaques. An uncompleted record hangs as its sleeve; a completed one is the
@@ -64,37 +65,26 @@ function Frame({
   );
 }
 
-// One planted prop on the hanging record — same slot spiral as the game
-// diorama, with the alive-world bob.
-function WallProp({
-  prop,
-  index,
-  count,
-}: {
-  prop: string;
-  index: number;
-  count: number;
-}) {
+// One planted prop on the hanging record — the same authored island spot as
+// the game diorama, with the alive-world bob.
+function WallProp({ prop, index }: { prop: string; index: number }) {
   const clone = usePropClone(prop);
   const group = useRef<Group>(null);
-  const [x, z] = slotPosition(index, count);
-  const baseY = DISC_TOP + 0.014;
+  const spot = placementFor(prop);
 
   useFrame(({ clock }) => {
     if (!group.current) return;
     group.current.position.y =
-      baseY + Math.sin(clock.elapsedTime * 2.2 + index * 1.3) * 0.015;
+      spot.y + Math.sin(clock.elapsedTime * 2.2 + index * 1.3) * 0.015;
   });
 
   return (
-    <group ref={group} position={[x, baseY, z]} rotation-y={index * 2.399963}>
+    <group
+      ref={group}
+      position={[spot.x, spot.y, spot.z]}
+      rotation-y={spot.rot}
+    >
       <primitive object={clone} />
-      {prop === "pond" && (
-        <mesh rotation-x={-Math.PI / 2} position-y={0.004}>
-          <circleGeometry args={[0.16, 24]} />
-          <meshStandardMaterial color="#3f6fa8" roughness={0.25} />
-        </mesh>
-      )}
     </group>
   );
 }
@@ -139,12 +129,9 @@ function HangingRecord() {
           <meshStandardMaterial color="#8a5a22" roughness={0.75} />
         </mesh>
         {/* the tiny world, planted and alive */}
-        <mesh rotation-x={-Math.PI / 2} position-y={DISC_TOP + 0.012}>
-          <circleGeometry args={[LABEL_RADIUS - 0.12, 48]} />
-          <meshStandardMaterial color="#6d9c52" roughness={0.9} />
-        </mesh>
+        <Island alive />
         {props.map((prop, i) => (
-          <WallProp key={prop} prop={prop} index={i} count={props.length} />
+          <WallProp key={prop} prop={prop} index={i} />
         ))}
       </group>
     </group>
