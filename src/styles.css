@@ -12,6 +12,16 @@ body,
   background: #0a0c14;
 }
 
+/* The game voice is the default, not an opt-in. Every overlay names its own
+   font below, but drei's <Html> portals its children OUT of the overlay tree
+   and into the canvas wrapper — so the wall plaques inherited from body, and
+   body inherited from the browser, and the record titles rendered in Times
+   six inches from a Baloo header. Anything that escapes a container now lands
+   somewhere the app chose (scene/WallScene.tsx). */
+body {
+  font-family: "Baloo 2 Variable", system-ui, sans-serif;
+}
+
 #root {
   position: relative;
 }
@@ -403,15 +413,22 @@ canvas {
   line-height: 1.5;
 }
 
+/* Weighted up because the rest of the game is: every other number and label
+   in this typeface runs 700–800, and Baloo's 400 is thin enough at plaque
+   size that the title read lighter than the badge underneath it. */
 .plaque-title {
   color: #d8c9a3;
   letter-spacing: 0.06em;
   font-size: 0.95rem;
+  font-weight: 600;
 }
 
+/* Locked: still a sleeve on the wall, not a record. No italic — Baloo 2 ships
+   weight axes and no italic file, so asking for one gets a synthesised slant
+   on a rounded face, which reads as a rendering fault rather than a style.
+   The lower opacity and smaller size already say "not yours yet". */
 .plaque-title.dim {
   opacity: 0.55;
-  font-style: italic;
   font-size: 0.85rem;
 }
 
@@ -427,6 +444,7 @@ canvas {
   border: 1px solid;
   border-radius: 999px;
   font-size: 0.62rem;
+  font-weight: 600;
   letter-spacing: 0.16em;
   text-indent: 0.16em;
   text-transform: uppercase;
