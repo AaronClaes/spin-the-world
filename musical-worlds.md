@@ -297,7 +297,9 @@ No state machine, no blending. A `"idle" | "run" | "cheer"` string decides which
 
 **Character design:** a small figure with oversized headphones. It reads as a _listener_, which is what someone running around a playing record should be. At the size it appears on screen (~130px tall, from behind, on a near-black disc) silhouette and one accent colour carry it entirely — facial detail is invisible, so low-poly is the correct choice rather than a compromise. Headphones are one extra mesh and give a distinctive outline.
 
-Flat-shade to match everything else. Contact shadow is a dark ellipse sprite on the disc surface, not a shadow map.
+Flat-shade to match everything else — the pack's own atlas counts, it's flat swatches, and it's what the diorama props already use. Keeping it matters on a character with hair, because head, hair and face are one primitive sharing one material: repaint that flat and you shave him bald. Contact shadow is a dark ellipse sprite on the disc surface, not a shadow map.
+
+**Judge every mesh from behind.** That's the only angle this game has. The Rogue ships with a full-length cape, which from the front is a silhouette and from directly behind is a sheet covering the tunic, belt, boots and both legs — every part of him that says "person out for a run" rather than "adventurer". Drop it in the build.
 
 ### 8.3 Tonearm
 

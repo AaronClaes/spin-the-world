@@ -55,7 +55,7 @@ export function InfoPanel({ onClose }: Props) {
           <div>
             <dt>Runner</dt>
             <dd>
-              the Knight from the{" "}
+              the Rogue from the{" "}
               <a
                 href="https://kaylousberg.itch.io/kaykit-adventurers"
                 target="_blank"
@@ -63,7 +63,7 @@ export function InfoPanel({ onClose }: Props) {
               >
                 KayKit Adventurers
               </a>{" "}
-              pack by Kay Lousberg — CC0, repainted flat with headphones added
+              pack by Kay Lousberg — CC0, cape dropped and headphones added
             </dd>
           </div>
           <div>
