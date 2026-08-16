@@ -8,7 +8,7 @@
 //             because neither pack in use here has an animal
 //   harbour — Kenney Pirate Kit (CC0) throughout, world pieces and scenery
 //             alike, so the whole island shades off one 512² atlas
-//   neon    — Kenney city buildings + Quaternius street furniture (both CC0),
+//   neon    — KayKit City Builder Bits 1.0 (CC0, Kay Lousberg) throughout,
 //             repainted for night by `recolor`; the sign is built in code so
 //             its tubes can flicker
 //
@@ -24,13 +24,29 @@ import {
 } from "@gltf-transform/functions";
 import { MeshoptSimplifier } from "meshoptimizer";
 
-// Exactly one of height / width / span sets the target world-unit size:
+// Exactly one of height / width / span / packScale sets the size:
 //   height — normalize by y, for things that read by how tall they are
 //   width  — normalize by x
 //   span   — normalize by the LONGER horizontal axis, which is what flat,
 //            sprawling props need: an anchor lying on its side is 10× wider
 //            than it is tall, so sizing it by height puts a 1.4-unit prop on
 //            a 0.92-unit island
+//   packScale — don't normalize at all. Multiply the source by a fixed factor,
+//            the SAME factor for every prop in the record, and let the artist's
+//            own proportions through untouched.
+//
+// packScale is the other three taken to their conclusion. Every per-prop size
+// here is a guess at what a thing should measure next to its neighbours — and
+// the pack already answers that, because one artist drew all of it to one
+// scale. Choosing 21 numbers by hand is 21 chances to disagree with them; the
+// city is one number (a 2.95-unit building becomes 0.42 on the label) and the
+// hydrant, the bench and the fire escape land wherever Kay put them.
+//
+// The other two records stay on per-prop sizing: they were authored that way,
+// they look right, and a diorama does legitimately compress scale — the
+// harbour's hero ship is deliberately small for its island. Use packScale on a
+// record built from one pack in one pass, where "in proportion" is the goal
+// rather than something to be traded against composition.
 // ownScale = exempt this prop from the proportion check below — it is
 // deliberately not drawn at its pack's own scale, or it comes from elsewhere.
 // sink = world units to bury below y=0, for the props that are NOT meant to
@@ -43,37 +59,47 @@ import { MeshoptSimplifier } from "meshoptimizer";
 // simplify = collapse to this fraction of the triangles first — these render
 // about 130px tall, so a dense source model is paying for detail nobody sees.
 // recolor = repaint a source material by name, { base } and/or { emissive }.
-// Every CC0 city pack is lit for daylight, and a grey-and-white office block
-// on a night island reads as a daytime model someone forgot to turn off. This
-// is also the only way to get lit windows: the walls go dark and the window
-// material picks up an emissive factor, so the building lights itself.
-// The night repaint for Kenney's city kit. Walls and trim go to dark slate;
-// the glass picks up an emissive factor so the block lights its own windows,
-// which is the whole difference between an office building and a city block
-// after dark.
-const NIGHT = {
-  _defaultMat: { base: [0.15, 0.14, 0.2] },
-  border: { base: [0.09, 0.09, 0.12] },
-  door: { base: [0.07, 0.07, 0.1] },
-  // Base stays dark and the emissive does the lighting. Pushing the base up
-  // instead made a building that was bright all over rather than one with lit
-  // windows — the walls have to stay dark for the glass to read as glass.
-  window: { base: [0.34, 0.24, 0.11], emissive: [0.8, 0.5, 0.14] },
-};
+// Every CC0 city pack is lit for daylight, and a brick walk-up with its
+// afternoon in it reads, on a night island, as a daytime model someone forgot
+// to turn off.
 
-// The tower is nearly all glass in the source — `window` and `trim` are two
-// sheets of curtain wall, not a pane and a moulding. Lit like the block's
-// windows it came out as one cream slab with no windows in it at all, so it
-// goes the other way: dark blue glass reflecting the dusk, and the colour
-// arrives as the neon rings the dressing wraps round it
-// (src/scene/neonDressing.ts). Darker than it looks like it should be, on
-// purpose — with any emissive at all it was the palest large surface on the
-// island and pulled the eye off its own lights.
-const NIGHT_TOWER = {
-  ...NIGHT,
-  window: { base: [0.11, 0.13, 0.21], emissive: [0.02, 0.04, 0.09] },
-  trim: { base: [0.08, 0.09, 0.15], emissive: [0.02, 0.04, 0.1] },
-};
+// -------------------------------------------------------- the city, dark ---
+
+// One factor for the whole city (see packScale above). Kay's tallest building
+// is 2.95 units; 0.142 lands it at 0.42 on the label, which is the height the
+// record's old skyscraper stood at, so the skyline keeps its silhouette while
+// everything under it moves into proportion.
+const CITY = 0.142;
+
+// Kay's whole city samples one material off one 1024² gradient atlas:
+// `citybits_texture`, on every building, every car, every bin. There is no
+// `window` material to light the way Kenney's block had, and no way to reach
+// one from here — the panes and the parapet share a swatch, so any repaint
+// that finds the windows finds the cornice too.
+//
+// What there IS: recolor runs per SOURCE FILE, before the merge, so each prop
+// carries its own instance of that material. The night can be mixed per prop
+// even though it can't be mixed per surface. That turns out to be the more
+// useful axis anyway — a city at night isn't uniformly dark, it's dark
+// buildings with a few bright things standing in front of them.
+//
+// The windows come back in src/scene/neonDressing.ts, which finds them by
+// shape rather than by material: a window is a small side-facing panel and a
+// wall is a big one, and the geometry knows the difference.
+
+// Dark and cool, and pitched so the pale window swatch stays the lightest
+// thing on the facade — that gap is what reads as glass once the light is off.
+const CITY_NIGHT = { citybits_texture: { base: [0.34, 0.32, 0.47] } };
+
+// One shade up, for the low building on the corner. Its ground floor is a
+// shopfront with an awning, and a shop that's open is the one building on the
+// block with its lights on.
+const CITY_LIT = { citybits_texture: { base: [0.62, 0.55, 0.62] } };
+
+// Street furniture that is meant to be SEEN at night rather than to recede:
+// the hydrant, the taxi, the signal. Barely knocked down at all — these are
+// the record's small bright accents against a block of dark brick.
+const CITY_ACCENT = { citybits_texture: { base: [0.78, 0.72, 0.76] } };
 
 const RECORDS = {
   // KayKit's Medieval Hexagon pack, same treatment as the harbour: one pack,
@@ -288,80 +314,130 @@ const RECORDS = {
       ownScale: true,
     },
   ],
+  // KayKit's City Builder Bits, one pack for the whole record — same move as
+  // the harbour and the meadow, and the one this island needed most. What was
+  // here before was two Kenney office blocks standing next to seven Quaternius
+  // street props: two artists, two atlases, two ideas of how thick a pole is.
+  // Nothing was wrong with any single model and the block never read as a
+  // block.
+  //
+  // The pack is also the reason every prop below is sized by packScale rather
+  // than by hand. Kay draws a four-storey walk-up at 2.95 units and a fire
+  // hydrant at 0.225 — thirteen to one — and those thirteen are the whole
+  // difference between a city and a set of city-shaped objects. One factor
+  // keeps it: 0.142, so the tallest building lands at 0.42 on a 0.92 island,
+  // which is where the old tower was.
   neon: [
-    // Kenney's buildings share material names, so one night palette does both
+    // -- the ten world pieces, in chart order (records/neon.ts) --
+    // the tall one, and the only 4-storey in the pack — the skyline is this
+    // building and everything else deferring to it
     {
       name: "tower",
-      file: "neon-tower.glb",
-      height: 0.42,
-      recolor: NIGHT_TOWER,
+      file: "kaykit-city/building_H_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
     },
+    // the wide corner block, with a shopfront under three floors of flats
     {
       name: "block",
-      file: "neon-block.glb",
-      span: 0.3,
-      simplify: 0.6,
-      recolor: NIGHT,
+      file: "kaykit-city/building_G_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
     },
+    // the low one on the corner, awning out over the pavement
     {
-      // Both of these are textured off a shared atlas, so there's no material
-      // to repaint by name — the base factor multiplies the whole texture
-      // instead, which is exactly what "the sun went down" does to a prop.
-      // Left alone the tank was the palest thing on a night island.
-      name: "watertower",
-      file: "neon-watertower.glb",
-      height: 0.3,
-      recolor: { "Atlas.049": { base: [0.42, 0.42, 0.52] } },
+      name: "shop",
+      file: "kaykit-city/building_A_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_LIT,
     },
+    // the narrow mid-rise that closes the skyline on a nearly clean run
+    {
+      name: "midrise",
+      file: "kaykit-city/building_C_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
+    },
+    { name: "lamp", file: "kaykit-city/streetlight.gltf", packScale: CITY },
     {
       name: "signal",
-      file: "neon-signal.glb",
-      height: 0.22,
-      recolor: { "Atlas.052": { base: [0.55, 0.55, 0.62] } },
+      file: "kaykit-city/trafficlight_C.gltf",
+      packScale: CITY,
+      recolor: CITY_ACCENT,
     },
+    // 1256 triangles of car for a prop that renders about 25px long
     {
-      name: "lamp",
-      file: "neon-lamp.glb",
-      height: 0.2,
-      recolor: {
-        Grey: { base: [0.13, 0.13, 0.17] },
-        Light: { base: [0.8, 0.7, 0.45], emissive: [0.85, 0.66, 0.34] },
-      },
-    },
-    {
-      // sourced as a medieval market stand, which is what a search for
-      // "street food" gets you in CC0. The repaint is what makes it a noodle
-      // bar: dark frame, hot awning, and a counter that lights itself.
-      name: "stall",
-      file: "neon-stall.glb",
-      height: 0.16,
-      recolor: {
-        RoofTiles_Red: { base: [0.62, 0.1, 0.12] },
-        Beige: { base: [0.5, 0.34, 0.14], emissive: [0.75, 0.45, 0.13] },
-        Wood: { base: [0.1, 0.09, 0.12] },
-        Wood_Side: { base: [0.14, 0.12, 0.16] },
-      },
-    },
-    {
-      // 3.3k triangles of car for a prop that renders about 25px long
       name: "taxi",
-      file: "neon-taxi.glb",
-      span: 0.2,
-      simplify: 0.4,
-      recolor: {
-        Headlights: { emissive: [0.9, 0.75, 0.45] },
-        TailLights: { emissive: [0.8, 0.08, 0.06] },
-      },
+      file: "kaykit-city/car_taxi.gltf",
+      packScale: CITY,
+      simplify: 0.45,
+      recolor: CITY_ACCENT,
     },
-    { name: "dumpster", file: "neon-dumpster.glb", span: 0.11 },
-    // a thousand triangles for a red dot 20px tall
+    // The rooftop tank — the New York detail Kay ships and nobody expects on
+    // a hex island. It lands on the roof of a SCENERY building rather than a
+    // collected one (islandLayout.ts), so there is no run in which it arrives
+    // to find nothing underneath it.
+    {
+      name: "watertower",
+      file: "kaykit-city/watertower.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
+    },
+    { name: "dumpster", file: "kaykit-city/dumpster.gltf", packScale: CITY },
+
+    // -- scenery: the block the ten pieces are dropped into (islandLayout.ts) --
+    // Three more buildings, so the street has two sides. These are never
+    // caught and never missing, which is what lets the water tower stand on
+    // one of them.
+    {
+      name: "walkup",
+      file: "kaykit-city/building_B_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
+    },
+    {
+      name: "terrace",
+      file: "kaykit-city/building_E_withoutBase.gltf",
+      packScale: CITY,
+      recolor: CITY_NIGHT,
+    },
+    // Parked traffic. The taxi is the one with the light on it; these are the
+    // cars it is stuck behind, so they stay dark.
+    {
+      name: "sedan",
+      file: "kaykit-city/car_sedan.gltf",
+      packScale: CITY,
+      simplify: 0.45,
+      recolor: CITY_NIGHT,
+    },
+    {
+      name: "hatchback",
+      file: "kaykit-city/car_hatchback.gltf",
+      packScale: CITY,
+      simplify: 0.45,
+      recolor: CITY_NIGHT,
+    },
+    // the small pedestrian signal, for the corners the boom arm doesn't reach
+    {
+      name: "pedsignal",
+      file: "kaykit-city/trafficlight_A.gltf",
+      packScale: CITY,
+      simplify: 0.5,
+      recolor: CITY_ACCENT,
+    },
+    // 180 triangles for a red speck 3cm tall — but it is the red speck that
+    // says "kerb" rather than "verge", and there are three of them
     {
       name: "hydrant",
-      file: "neon-hydrant.glb",
-      height: 0.055,
-      simplify: 0.3,
+      file: "kaykit-city/firehydrant.gltf",
+      packScale: CITY,
+      simplify: 0.4,
       error: 0.08,
+      recolor: CITY_ACCENT,
     },
+    { name: "bench", file: "kaykit-city/bench.gltf", packScale: CITY },
+    { name: "planter", file: "kaykit-city/bush.gltf", packScale: CITY },
+    { name: "carton", file: "kaykit-city/box_A.gltf", packScale: CITY },
   ],
 };
 
@@ -515,11 +591,13 @@ async function build(record, props) {
     // Normalize: uniform scale to target size, centred on x/z, base on y=0.
     const b = getBounds(wrapper);
     const size = [0, 1, 2].map((i) => b.max[i] - b.min[i]);
-    const s = prop.span
-      ? prop.span / Math.max(size[0], size[2])
-      : prop.width
-        ? prop.width / size[0]
-        : prop.height / size[1];
+    const s = prop.packScale
+      ? prop.packScale
+      : prop.span
+        ? prop.span / Math.max(size[0], size[2])
+        : prop.width
+          ? prop.width / size[0]
+          : prop.height / size[1];
     const cx = (b.min[0] + b.max[0]) / 2;
     const cz = (b.min[2] + b.max[2]) / 2;
     wrapper.setScale([s, s, s]);

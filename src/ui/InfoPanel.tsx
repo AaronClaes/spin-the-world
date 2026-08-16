@@ -97,6 +97,20 @@ export function InfoPanel({ onClose }: Props) {
             </dd>
           </div>
           <div>
+            <dt>City props</dt>
+            <dd>
+              the{" "}
+              <a
+                href="https://kaylousberg.itch.io/city-builder-bits"
+                target="_blank"
+                rel="noreferrer"
+              >
+                KayKit City Builder Bits
+              </a>{" "}
+              pack by Kay Lousberg — CC0, buildings and street alike
+            </dd>
+          </div>
+          <div>
             <dt>Sheep &amp; clouds</dt>
             <dd>
               by{" "}

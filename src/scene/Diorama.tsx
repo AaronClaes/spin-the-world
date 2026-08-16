@@ -451,7 +451,7 @@ function PlantedProp({
         // motion, which is exactly what an idling engine looks like
         y += Math.sin(now * 9.4 + phase) * 0.0016;
         break;
-      case "stall":
+      case "shop":
         // the awning catches what wind gets down between the buildings
         tilt = Math.sin(now * 2.6 + phase) * 0.022;
         break;

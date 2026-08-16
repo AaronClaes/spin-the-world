@@ -452,55 +452,175 @@ const HARBOUR = island({
 // and the harbour's coastline do.
 const NEON = island({
   kinds: {
-    // the podium, straddling the middle
+    // The rise in the middle, and the reason it has to be there: a hill tile
+    // sits 0.07 proud, and that is exactly what buries the record's SPINDLE.
+    // The spindle is a 0.09 post standing 0.026 above a path tile, and the
+    // first cut of this layout ran the cross street through (0,0) — which put
+    // a chrome puck in the middle of the junction on a city with no chrome in
+    // it. The meadow and the harbour never showed it because both of them put
+    // a hill and their tallest prop on the middle tile. So does this one now.
     "0,0": "hill",
     "0,-1": "hill",
-    // the main street, edge to edge
+    // The main road, straight across the island east to west.
     "-3,1": "path",
     "-2,1": "path",
     "-1,1": "path",
     "0,1": "path",
     "1,1": "path",
     "2,1": "path",
-    // north branch, running down to the water
+    // The cross street, running from the main road up to the canal — the
+    // second of the only two straight lines a hex grid gives you.
     "1,0": "path",
     "1,-1": "path",
-    // south alley
-    "0,2": "path",
-    "-1,3": "path",
-    // the canal
+    // and a short branch off the other side, so the road plan isn't a single
+    // T bolted to one corner
+    "1,2": "path",
+    "-2,2": "path",
+    "-2,3": "path",
+    // The canal, at the head of the cross street: the road runs down to water
+    // at one end and off the island at the other, which is what stops it
+    // reading as a stripe.
     "1,-3": "water",
     "2,-3": "water",
     "1,-2": "water",
-    // painted forecourt outside the food stall
+    // Painted forecourt outside the shop, opening onto the branch. One tile,
+    // not two: the south side of the plate was three streets and two pale
+    // aprons in a row, which from the play camera is a car park.
     "-1,2": "sand",
-    "-2,2": "sand",
   },
   spots: {
-    tower: { q: 0, r: 0, dz: -0.01, rot: 18 },
-    // the mid-rise sits back off the street with an alley between it and the
-    // tower — buildings shoulder to shoulder on a 0.92 island just read as
-    // one lump
-    block: { q: -2, r: -1, dx: 0.02, dz: -0.02, rot: 96 },
-    dumpster: { q: -2, r: 0, dx: 0.04, dz: -0.03, rot: 104 },
-    // the sign takes the corner where the branch leaves the main street, so
-    // it's lit from the busiest part of the plate
-    neonsign: { q: 2, r: 0, dx: -0.03, dz: 0.02, rot: -34 },
-    watertower: { q: 3, r: -2, dx: -0.02, dz: 0.02, rot: 25 },
-    // Kerbside props are nudged toward the road they belong to rather than
-    // centred on their tile — a street light standing in the middle of the
-    // pavement reads as a lamp in a field.
-    // the boom arm runs out along the model's +x, so it has to be turned
-    // INWARD or it reaches out past the coast with nothing under it
-    signal: { q: 1, r: 2, dx: 0.02, dz: -0.07, rot: 0 },
-    hydrant: { q: -1, r: 0, dx: 0.03, dz: 0.06, rot: 40 },
-    lamp: { q: -2, r: 3, dx: 0.06, dz: -0.05, rot: -20 },
-    // the stall faces back across its forecourt toward the road
-    stall: { q: -1, r: 2, dx: -0.01, dz: 0.04, rot: 195 },
-    // the one prop actually standing on the asphalt, turned to run along the
-    // street (the main road runs in +x, which is 90° from the model's length)
-    taxi: { q: -1, r: 1, dx: 0.02, rot: 90 },
+    // -- the four buildings you build --
+    // Every building in the pack is drawn front-on: windows, awnings and doors
+    // all live on its +z face and the other three sides are blank brick. So a
+    // rotation here is not "which way is the street", it is "which way is the
+    // camera" — and the answer is OUTWARD, radially away from the spindle,
+    // snapped to the nearest of the six hex edge normals.
+    //
+    // Turned to face the streets instead, which is what a real block does, the
+    // island came out showing you its backs: the roads run through the middle,
+    // so fronting them points every facade inward and the near half — the half
+    // closest to the camera and biggest on screen — goes blank. Facing out,
+    // the near half is always the lit half, whatever angle the disc has turned
+    // to. What carries the street plan instead is the glow on the tile rims,
+    // which was already doing that job better than a row of doors ever did.
+    //
+    // The tower is the exception, and it can be: standing on the middle tile
+    // it has no outward, and it is tall enough to be read from any side.
+    tower: { q: 0, r: 0, dz: -0.01, rot: 30 },
+    block: { q: 2, r: -1, dx: 0.02, dz: -0.03, rot: 90 },
+    midrise: { q: -2, r: 0, dx: -0.02, dz: -0.01, rot: -90 },
+    // Low, awninged, and the one building on the block with its lights on. It
+    // takes the corner of the junction, with its forecourt beside it.
+    shop: { q: 0, r: 2, dx: 0.03, dz: 0.02, rot: 30 },
+
+    // -- the corner --
+    // The sign stands on the pavement between the rise and the main road, so
+    // it is lit from the busiest part of the plate and the tower is behind it.
+    neonsign: { q: -1, r: 0, dx: 0.03, dz: 0.06, rot: -40 },
+    // The signal and the street light both reach along their own -x — Kay
+    // hangs the boom off one side of the post — so their rotations are set
+    // from the arm rather than from a frontage, and both have to reach over
+    // the ROAD. Aimed the other way an arm hangs its lights over a rooftop, or
+    // out past the coast with nothing under it.
+    //
+    // Both stand on a STREET tile pushed 0.13 toward the pavement, not on the
+    // pavement tile itself. A building fills its tile — 0.285 of a 0.322 hex —
+    // so "beside the building, at the kerb" is a two-centimetre gap that
+    // nothing fits in, and every lamp authored that way ended up inside a
+    // wall. 0.13 out from a road tile's middle lands on the kerb line from the
+    // other side, which is the same place and is empty.
+    //
+    // The signal is placed off its POST, not off its model: build-diorama.mjs
+    // centres every prop on x/z, and this one is nine parts boom to one part
+    // post, so its middle is out in mid-air over the road. Centred on the kerb
+    // it put the post through the corner of the building behind it.
+    signal: { q: 1, r: 1, dx: 0.037, dz: 0.064, rot: -60 },
+    lamp: { q: -1, r: 1, dx: -0.065, dz: -0.113, rot: 90 },
+
+    // -- the street --
+    // The only prop standing on asphalt. rot 90 lays the car's length along
+    // the main road, which runs in +x.
+    taxi: { q: 0, r: 1, dx: 0.03, dz: 0.01, rot: 90 },
+
+    // -- up top and out back --
+    // On the roof of the TERRACE, which is scenery — always standing, from the
+    // first beat. Put on a collected building instead, a run that missed that
+    // piece and caught this one would land a water tank in mid-air. dy is the
+    // roof deck: the building is 0.32 to the top of its parapet and the deck
+    // sits just inside it.
+    watertower: { q: 2, r: 0, dx: 0.03, dz: -0.03, dy: 0.3, rot: 20 },
+    // the back lot behind the east block, off the street entirely
+    dumpster: { q: 3, r: -2, dx: -0.04, dz: 0.06, rot: 105 },
   },
+  // Read roughly as a walk: the east block, the canal end, then the west side,
+  // the traffic and the kerbs. Five more buildings, all facing out for the
+  // same reason the four you catch do.
+  //
+  // Nine buildings on thirteen buildable tiles, not the twelve this started
+  // with. Twelve filled the plate edge to edge and the streets stopped being
+  // visible between them — the island read as a heap of boxes with pink lines
+  // painted on it. A city block needs the empty lot, the forecourt and the
+  // yard behind the bins as much as it needs the buildings.
+  scenery: [
+    // -- the east block, and the roof the water tower lands on --
+    { prop: "terrace", q: 2, r: 0, dz: 0.02, rot: 90 },
+    { prop: "walkup", q: 3, r: -1, dx: -0.03, dz: 0.02, rot: 90 },
+    // -- the north end, backing onto the canal --
+    { prop: "midrise", q: 2, r: -2, dx: 0.03, dz: 0.02, rot: 150 },
+    { prop: "walkup", q: -1, r: -1, dx: 0.01, dz: -0.02, rot: 210 },
+    // -- the south side, closing the plate off below the main road --
+    { prop: "shop", q: -3, r: 2, dx: 0.03, dz: -0.01, rot: -30, scale: 1.05 },
+    { prop: "walkup", q: -1, r: 3, dx: 0.01, dz: 0.02, rot: 30, scale: 0.95 },
+
+    // -- parked traffic. Cars sit ON the asphalt, laid along the road they're
+    // on: rot 90 for the main road, rot 30 for the cross street and the
+    // branch, which are the two directions a straight line runs on this grid.
+    { prop: "sedan", q: -2, r: 1, dx: 0.04, dz: 0.04, rot: 90 },
+    { prop: "hatchback", q: 2, r: 1, dx: -0.03, dz: -0.04, rot: -90 },
+    { prop: "sedan", q: 1, r: -1, dx: -0.02, dz: 0.02, rot: 30 },
+    { prop: "hatchback", q: -2, r: 3, dx: -0.03, dz: 0.02, rot: 210 },
+
+    // -- more street lights, because one lamp is a prop and five are a street.
+    // Same model as the piece you catch, which is the whole point of scenery
+    // being repeatable.
+    { prop: "lamp", q: -2, r: 1, dx: -0.065, dz: -0.113, rot: 90 },
+    { prop: "lamp", q: 2, r: 1, dx: -0.02, dz: -0.12, rot: 90 },
+    { prop: "lamp", q: 1, r: 0, dx: 0.13, rot: 0 },
+    { prop: "lamp", q: -2, r: 2, dx: -0.13, rot: 180, scale: 0.95 },
+    // and the little pedestrian signals on the corners the boom arm misses
+    { prop: "pedsignal", q: 0, r: 1, dx: 0.065, dz: 0.113, rot: -70 },
+    { prop: "pedsignal", q: 1, r: 0, dx: 0.065, dz: 0.113, rot: 60 },
+
+    // -- kerbside: the small red thing that says "kerb" rather than "verge" --
+    { prop: "hydrant", q: -1, r: 0, dx: -0.11, dz: -0.02, rot: 25 },
+    { prop: "hydrant", q: 0, r: -1, dx: 0.09, dz: 0.06, rot: -40 },
+    { prop: "hydrant", q: -2, r: -1, dx: -0.06, dz: 0.08, rot: 140 },
+    { prop: "hydrant", q: 1, r: 2, dx: -0.13, dz: 0.02, rot: 70 },
+
+    // -- the forecourt outside the shop: benches, planters, somewhere to be --
+    { prop: "bench", q: -1, r: 2, dx: 0.05, dz: 0.04, rot: 30 },
+    { prop: "bench", q: -1, r: 2, dx: -0.03, dz: 0.08, rot: -20 },
+    { prop: "planter", q: -1, r: 2, dx: 0.09, dz: -0.04, rot: 15 },
+    { prop: "planter", q: -1, r: 2, dx: -0.06, dz: -0.07, rot: 200 },
+    { prop: "carton", q: -1, r: 2, dx: -0.09, dz: 0.01, rot: 45 },
+
+    // -- the four lots left empty when the block came down from twelve
+    // buildings to nine. A vacant lot is a thing a city has, and dressing one
+    // is cheaper than filling it: bins, a pallet of boxes, a bench nobody
+    // sits on.
+    { prop: "dumpster", q: 3, r: -2, dx: 0.07, dz: 0.02, rot: 80, scale: 0.9 },
+    { prop: "carton", q: 3, r: -2, dx: -0.03, dz: -0.08, rot: 15 },
+    { prop: "carton", q: 3, r: -2, dx: 0.03, dz: -0.1, rot: 130, scale: 0.85 },
+    { prop: "dumpster", q: -2, r: -1, dx: 0.04, dz: 0.03, rot: 140 },
+    { prop: "carton", q: -2, r: -1, dx: -0.02, dz: -0.04, rot: 80 },
+    { prop: "planter", q: -2, r: -1, dx: 0.08, dz: -0.07, rot: 15 },
+    { prop: "carton", q: -1, r: -2, dx: 0.01, dz: 0.03, rot: 55 },
+    { prop: "carton", q: -1, r: -2, dx: 0.05, dz: -0.02, rot: 165, scale: 1.1 },
+    { prop: "planter", q: -1, r: -2, dx: -0.06, dz: 0.05, rot: 290 },
+    { prop: "bench", q: 0, r: -2, dx: -0.03, dz: 0.03, rot: 150 },
+    { prop: "planter", q: 0, r: -2, dx: 0.05, dz: -0.06, rot: 110, scale: 1.1 },
+    { prop: "carton", q: 0, r: -2, dx: 0.08, dz: 0.04, rot: 25 },
+  ],
   palette: {
     // Cool slate against the label's amber paper. The island is the dark
     // thing on this record — everything that reads is either lit (the sign)
@@ -511,7 +631,7 @@ const NEON = island({
     // city if the STREETS read, and at 200px across on a turning disc that
     // takes a hard step between asphalt and kerb, not a shade.
     grass: "#79738c", // concrete pavement
-    hill: "#8b839f", // the podium, catching more of the key light
+    hill: "#8b839f", // the rise, catching more of the key light
     path: "#2b2833", // asphalt — the darkest thing on the plate
     sand: "#9a8a70", // forecourt, under a sodium light
     water: "#1a2c50", // the canal

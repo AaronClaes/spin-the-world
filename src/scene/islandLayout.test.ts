@@ -48,6 +48,37 @@ describe("island layouts", () => {
         }
       });
 
+      // The neon record stands its water tower on a rooftop, which only works
+      // because the roof belongs to a SCENERY building — scenery is on the
+      // island from beat 0 and can never be missed. Lifted onto a collected
+      // building instead, a run that dropped that piece and caught this one
+      // would land a water tank in mid-air, and nothing else in the codebase
+      // would complain.
+      //
+      // This can't check that what's underneath is tall enough — heights live
+      // in the GLB, not here — but it can check the two things that are
+      // authored: that something stands on that tile at all, and that it is
+      // not one of the ten you might fail to catch.
+      it("never stands a lifted prop on something a run can miss", () => {
+        for (const [prop, spot] of Object.entries(island.spots)) {
+          if ((spot.dy ?? 0) <= 0.05) continue;
+          const under = island.scenery.filter(
+            (d) => d.q === spot.q && d.r === spot.r,
+          );
+          expect(
+            under.length,
+            `${prop} is lifted ${spot.dy} above ${spot.q},${spot.r} with no scenery under it`,
+          ).toBeGreaterThan(0);
+          for (const [other, at] of Object.entries(island.spots)) {
+            if (other === prop) continue;
+            expect(
+              at.q === spot.q && at.r === spot.r,
+              `${prop} is lifted onto ${other}'s tile, and ${other} is a piece a run can miss`,
+            ).toBe(false);
+          }
+        }
+      });
+
       it("keeps every authored spot inside the label", () => {
         // the plate reaches ~0.92 and the label is 1.2; a prop nudged past the
         // coast by a fat dx would hang over bare vinyl

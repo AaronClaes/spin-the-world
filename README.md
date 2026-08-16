@@ -17,7 +17,7 @@ to right in the order they're listed here:
 | -------------- | ------ | --------------------------------------- | -------------------------------------------- |
 | **Harbour 33** | easy   | 100bpm · 12.5 RPM · sea shanty, D minor | a pirate cove with a fort tower over the bay |
 | **Meadow 45**  | medium | 120bpm · 15 RPM · folk, G major         | a wooded village, a windmill and a watermill |
-| **Neon 78**    | hard   | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign |
+| **Neon 78**    | hard   | 140bpm · 17.5 RPM · city pop, A minor   | a city block after dark, ten buildings deep  |
 
 BPM sets RPM — eight beats to a revolution — so the 33 is a genuinely calmer
 record to stand on as well as a slower tune, and the 78 is the hard one: more
@@ -62,7 +62,7 @@ as-is to Vercel or Netlify, no server or config needed.
 - Runner: the Rogue wearing the Ranger's head, both from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: cape dropped, gear repainted into a sweatshirt/jeans/trainers, headphones added, run clip from the pack’s 2.0 animation library, idle and cheer from its 1.x rig, see `scripts/build-runner.mjs`)
 - Meadow props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) 1.0 by Kay Lousberg — CC0 (windmill, watermill, home, well, trees, stone fence, wheelbarrow, waterlily, plus the scenery: tree clusters, stumps, rocks, rail fence, crates, sacks, barrels, buckets, a woodpile, lilies and reeds). The windmill's sails and the watermill's wheel are separate nodes, so both turn.
 - Harbour props: [Kenney Pirate Kit](https://kenney.nl/assets/pirate-kit) — CC0 (fort tower, shed, dock, pirate ship, crate, barrel, chest, rocks, palm, cannon, plus the scenery: shore rocks, tufts, plants, a rowboat, bottles and a flag). One pack for the whole island, world pieces and scenery alike, so it all shades off a single atlas.
-- Neon props: [Kenney](https://kenney.nl/) — CC0 (skyscraper, apartment block) and [Quaternius](https://quaternius.com/) — CC0 (market stand, taxi, street light, traffic signal, water tower, dumpster, fire hydrant). All repainted for night by `recolor` in `scripts/build-diorama.mjs`. The neon sign is built from primitives so its tubes can flicker.
+- Neon props: [KayKit City Builder Bits](https://kaylousberg.itch.io/city-builder-bits) 1.0 by Kay Lousberg — CC0 (six buildings, taxi, street light, traffic signal, rooftop water tank, dumpster, plus the scenery: parked cars, pedestrian signals, hydrants, benches, planters and cartons). One pack for the whole record, sized by a single `packScale` factor so the block keeps the artist's own proportions, and repainted for night per prop by `recolor`. The lit windows are found by shape rather than by material — the pack samples one atlas for everything — see `src/scene/neonDressing.ts`. The neon sign is built from primitives so its tubes can flicker.
 - Sheep and sky clouds by [Quaternius](https://quaternius.com/) — CC0. The sheep is the one model in the meadow from outside KayKit; neither that pack nor Kenney's ships an animal.
 - Every model is CC0. Sourced from [poly.pizza](https://poly.pizza/) with `scripts/poly-search.py`, which refuses to download anything not marked CC0.
 - Kitbash sources live in `assets-src/`; `scripts/build-diorama.mjs` merges them into one GLB per record under `public/models/`

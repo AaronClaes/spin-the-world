@@ -33,12 +33,15 @@ export const neon: RecordDef = {
     { id: "np01", beat: 19, lane: 1, prop: "tower" },
     { id: "np02", beat: 35, lane: 0, prop: "block" },
     { id: "np03", beat: 51, lane: 2, prop: "neonsign" },
-    { id: "np04", beat: 67, lane: 1, prop: "stall" },
+    { id: "np04", beat: 67, lane: 1, prop: "shop" },
     { id: "np05", beat: 83, lane: 0, prop: "lamp" },
     { id: "np06", beat: 99, lane: 2, prop: "signal" },
     { id: "np07", beat: 115, lane: 1, prop: "taxi" },
     { id: "np08", beat: 135, lane: 2, prop: "watertower" },
-    { id: "np09", beat: 155, lane: 0, prop: "hydrant" },
+    // A whole building this late on purpose: the ninth piece is the one only
+    // a nearly clean run gets, and on this record it visibly finishes the
+    // skyline rather than adding another bin to the pavement.
+    { id: "np09", beat: 155, lane: 0, prop: "midrise" },
     // pulled in off the run-out so even the last piece survives one miss —
     // 179 + 8 is still inside the track
     { id: "np10", beat: 179, lane: 1, prop: "dumpster" },

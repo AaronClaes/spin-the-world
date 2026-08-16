@@ -3,10 +3,12 @@ import {
   Box3,
   BoxGeometry,
   BufferAttribute,
+  BufferGeometry,
   CircleGeometry,
   Color,
   CylinderGeometry,
   DoubleSide,
+  Float32BufferAttribute,
   FrontSide,
   Mesh,
   MeshBasicMaterial,
@@ -19,16 +21,17 @@ import {
 // Neon, added on top of the kitbash.
 //
 // The city props are CC0 daylight models. `recolor` in build-diorama.mjs takes
-// them to night — dark walls, a warm emissive in the glass — and that got the
-// island as far as "a city block after dark". It wasn't a NEON city: one lit
-// sign on an otherwise unlit block. Neon is the point of this record, so the
-// lights are put on here, at load, where three.js can do things a glTF
-// material can't:
+// them to night, and that got the island as far as "a city block after dark".
+// It wasn't a NEON city: one lit sign on an otherwise unlit block. Neon is the
+// point of this record, so the lights are put on here, at load, where three.js
+// can do things a glTF material can't:
 //
-//   - per-window colour, by welding the source model's own window quads into
-//     panels and writing vertex colours onto them. A glTF material is one
-//     colour for every window it touches; the geometry knows where the
-//     windows are, so use that.
+//   - per-window colour, by welding the source model's own geometry into
+//     panels and lighting the ones that are window-shaped. This is the whole
+//     ball game on KayKit's city pack, which samples ONE material for every
+//     building, car and bin it ships: there is no `window` material to repaint
+//     and no way to make one, but the geometry still knows where the windows
+//     are, so use that instead.
 //   - additive strips, rings and underglow, which can only ever brighten what
 //     is behind them (see the lighthouse beam for why that matters over
 //     near-black vinyl).
@@ -170,41 +173,57 @@ function inLocalFrame<T>(
   return result;
 }
 
-// Repaint the mesh carrying `matName` as unlit, one colour per PANEL, where a
-// panel is a set of triangles joined by shared vertices.
+// Light a mesh's window panes, one colour each, by welding its triangles into
+// PANELS — sets joined by shared vertex positions — and asking `pick` what
+// colour each one burns in.
+//
+// Selection is by shape, not by material name. It has to be: Kay's whole city
+// samples one material off one gradient atlas, so there is no `window` to look
+// up the way Kenney's block had, and a repaint that found the panes would find
+// the parapet with them. Welding is what makes shape work at all. A window
+// arrives as four unrelated pieces — pane, mullion, sill, lintel — none of
+// which mean anything alone; welded, the pane is a flat quad and the wall it
+// sits in is a single 2.0 × 2.85 shell, and telling those apart is a size
+// comparison. The mullions fall just under the width cut and stay grey, which
+// is what gives every lit pane its cross-bar.
+//
+// The lit panels are COPIED into a new mesh laid a hair proud of the surface
+// they came from, rather than repainting in place: the building keeps the
+// texture the kitbash gave it and the light goes on top of it.
 //
 // The first version of this coloured per triangle off the triangle's own
-// centroid, and a window is two triangles whose centroids sit either side of
-// its diagonal — so the two halves landed on different floors and different
-// lit/unlit rolls, and every pane came out as two clashing triangles. Welding
-// the triangles into panels first is the fix, and it holds whatever size the
-// source model's windows happen to be.
-function paintPanels(
-  root: Object3D,
-  matName: string,
-  pick: (centre: Vector3, box: Box3) => Color,
-): void {
-  root.traverse((o) => {
-    const mesh = o as Mesh;
-    if (!mesh.isMesh) return;
-    if ((mesh.material as MeshBasicMaterial)?.name !== matName) return;
+// centroid, and a pane is two triangles whose centroids sit either side of its
+// diagonal — so the two halves landed on different floors and different
+// lit/unlit rolls, and every window came out as two clashing triangles.
+// Welding fixed that too, and holds whatever size the source windows happen to
+// be.
+const LIFT = 0.004; // source units, along the panel's own normal
 
-    // non-indexed so each triangle owns its three vertices and can be given a
-    // colour without bleeding into a neighbour
+function litPanels(
+  root: Object3D,
+  pick: (size: Vector3, centre: Vector3, up: number) => Color | null,
+): void {
+  const meshes: Mesh[] = [];
+  root.traverse((o) => {
+    if ((o as Mesh).isMesh) meshes.push(o as Mesh);
+  });
+
+  for (const mesh of meshes) {
+    // non-indexed so each triangle owns its three vertices and can be lit
+    // without bleeding into a neighbour
     const geometry = mesh.geometry.index
       ? mesh.geometry.toNonIndexed()
-      : mesh.geometry.clone();
+      : mesh.geometry;
     const position = geometry.attributes.position as BufferAttribute;
-    const box = new Box3().setFromBufferAttribute(position);
     const triangles = position.count / 3;
 
-    // union-find: two triangles that share a vertex position are the same panel
+    // union-find: two triangles that share a vertex position are one panel
     const parent = Int32Array.from({ length: triangles }, (_, i) => i);
     const find = (i: number): number => {
-      let root = i;
-      while (parent[root] !== root) root = parent[root];
-      while (parent[i] !== root) [i, parent[i]] = [parent[i], root];
-      return root;
+      let top = i;
+      while (parent[top] !== top) top = parent[top];
+      while (parent[i] !== top) [i, parent[i]] = [parent[i], top];
+      return top;
     };
     const corners = new Map<string, number>();
     const at = new Vector3();
@@ -222,203 +241,363 @@ function paintPanels(
       }
     }
 
-    // one centre, and so one colour, per panel
-    const centres = new Map<number, { sum: Vector3; n: number }>();
+    // one box and one summed normal per panel, so the pick sees a window
+    // rather than a triangle
+    const panels = new Map<number, { box: Box3; normal: Vector3 }>();
+    const a = new Vector3();
+    const b = new Vector3();
+    const c = new Vector3();
+    const cross = new Vector3();
     for (let t = 0; t < triangles; t++) {
-      const panel = find(t);
-      let entry = centres.get(panel);
-      if (!entry) {
-        entry = { sum: new Vector3(), n: 0 };
-        centres.set(panel, entry);
+      const id = find(t);
+      let panel = panels.get(id);
+      if (!panel) {
+        panel = { box: new Box3().makeEmpty(), normal: new Vector3() };
+        panels.set(id, panel);
       }
-      for (let v = 0; v < 3; v++)
-        entry.sum.add(at.fromBufferAttribute(position, t * 3 + v));
-      entry.n += 3;
+      a.fromBufferAttribute(position, t * 3);
+      b.fromBufferAttribute(position, t * 3 + 1);
+      c.fromBufferAttribute(position, t * 3 + 2);
+      panel.box.expandByPoint(a).expandByPoint(b).expandByPoint(c);
+      // area-weighted, so a panel's few big triangles outvote its slivers
+      panel.normal.add(cross.crossVectors(b.sub(a), c.sub(a)));
     }
-    const paint = new Map<number, Color>();
-    for (const [panel, { sum, n }] of centres)
-      paint.set(panel, pick(sum.divideScalar(n), box));
 
-    const colors = new Float32Array(position.count * 3);
+    const size = new Vector3();
+    const centre = new Vector3();
+    const chosen = new Map<number, { color: Color; offset: Vector3 }>();
+    for (const [id, panel] of panels) {
+      panel.box.getSize(size);
+      panel.box.getCenter(centre);
+      const normal = panel.normal.clone().normalize();
+      const color = pick(size, centre, Math.abs(normal.y));
+      if (color) chosen.set(id, { color, offset: normal.multiplyScalar(LIFT) });
+    }
+    if (!chosen.size) continue;
+
+    const points: number[] = [];
+    const colors: number[] = [];
     for (let t = 0; t < triangles; t++) {
-      const c = paint.get(find(t)) as Color;
+      const hit = chosen.get(find(t));
+      if (!hit) continue;
       for (let v = 0; v < 3; v++) {
-        colors[(t * 3 + v) * 3] = c.r;
-        colors[(t * 3 + v) * 3 + 1] = c.g;
-        colors[(t * 3 + v) * 3 + 2] = c.b;
+        at.fromBufferAttribute(position, t * 3 + v).add(hit.offset);
+        points.push(at.x, at.y, at.z);
+        colors.push(hit.color.r, hit.color.g, hit.color.b);
       }
     }
-    geometry.setAttribute("color", new BufferAttribute(colors, 3));
-    mesh.geometry = geometry;
-    // toneMapped off for the same reason as the glow strips: the colours below
-    // are pushed past 1.0 so the bloom pass can see them
-    mesh.material = new MeshBasicMaterial({
-      vertexColors: true,
-      toneMapped: false,
-    });
-  });
-}
 
-// ------------------------------------------------------------------ props ---
-
-const FLOORS = 6;
-
-// The tower's glass is left as the night repaint made it — dark, reflecting
-// the dusk — and the colour goes on as light fittings instead.
-//
-// This started out repainting the curtain wall itself, one hue per floor.
-// Kenney's tower is nearly all glass, so that turned the whole building into
-// a stack of coloured stripes: the tower stopped being a tower and became a
-// swatch. Bands wrapped round it read as a lit building because the building
-// is still there behind them.
-function dressTower(root: Object3D) {
-  inLocalFrame(root, (size) => {
-    // An open four-sided tube turned 45°, so its flats sit just off the
-    // tower's four walls: a ring of light round the building with no lid and
-    // no far wall to double up on.
-    const ring = (size.x / 2) * Math.SQRT2 * 1.03;
-    for (let i = 0; i < FLOORS; i++) {
-      const band = new Mesh(
-        new CylinderGeometry(ring, ring, size.y * 0.012, 4, 1, true),
-        glowMaterial(HUES[i % HUES.length], 0.06, 0.9, 1.5, FrontSide),
-      );
-      band.rotation.y = Math.PI / 4;
-      band.position.y = size.y * ((i + 0.7) / (FLOORS + 0.6));
-      // each band on its own clock, slower the higher it goes
-      root.add(pulsing(band, 0.16, 2.4 - i * 0.22, i * 1.7));
-    }
-
-    // a crown, so the tallest thing on the island doesn't just stop
-    const crown = new Mesh(
-      new CylinderGeometry(
-        ring * 0.98,
-        ring * 0.98,
-        size.y * 0.016,
-        4,
-        1,
-        true,
+    const lights = new BufferGeometry();
+    lights.setAttribute("position", new Float32BufferAttribute(points, 3));
+    lights.setAttribute("color", new Float32BufferAttribute(colors, 3));
+    // Added as a CHILD of the mesh it was copied from, so it inherits that
+    // mesh's transform and the copied positions need no conversion.
+    // toneMapped off for the same reason as the glow strips: these colours are
+    // pushed past 1.0 so the bloom pass can see them.
+    mesh.add(
+      new Mesh(
+        lights,
+        new MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
       ),
-      glowMaterial(SIGN_CYAN, 0.06, 0.85, 1.5, FrontSide),
     );
-    crown.rotation.y = Math.PI / 4;
-    crown.position.y = size.y * 0.985;
-    root.add(pulsing(crown, 0.18, 1.3, 0.4));
-
-    // and a vertical sign running down one corner — the detail that makes a
-    // tower read as somebody's tower rather than an office block
-    const spine = new Mesh(
-      new BoxGeometry(size.x * 0.05, size.y * 0.44, size.z * 0.12),
-      glowMaterial(SIGN_MAGENTA, 0.18, 0.9),
-    );
-    spine.position.set(size.x * 0.52, size.y * 0.64, size.z * 0.52);
-    root.add(pulsing(spine, 0.3, 2.1, 1.9));
-  });
+  }
 }
 
-function dressBlock(root: Object3D) {
-  // Windows lit at random out of the palette, which is what a residential
-  // block looks like from outside: everyone's lamp is a different colour, and
-  // a few of them are out.
-  paintPanels(root, "window", (c) => {
+// What a window pane measures, in the pack's own units. Absolute rather than a
+// fraction of the model, because the whole city is drawn to one scale
+// (packScale, build-diorama.mjs) — Kay drew the window once and it is the same
+// window on the four-storey and on the corner shop.
+const PANE_FLAT = 0.02; // a pane is a quad: no thickness worth the name
+const PANE_H = [0.1, 0.6];
+const PANE_W = [0.05, 0.5]; // the low end is what excludes the mullions
+const DARK_ODDS = 0.22; // how many windows have the light off
+
+function lightWindows(root: Object3D): void {
+  litPanels(root, (size, centre, up) => {
+    const flat = Math.min(size.x, size.z);
+    const wide = Math.max(size.x, size.z);
+    const isPane =
+      flat < PANE_FLAT &&
+      size.y > PANE_H[0] &&
+      size.y < PANE_H[1] &&
+      wide > PANE_W[0] &&
+      wide < PANE_W[1] &&
+      up < 0.5; // a floor or a roof is not a window
+    if (!isPane) return null;
+    // Lit at random out of the palette, which is what a block of flats looks
+    // like from outside: everyone's lamp is a different colour and a few of
+    // them are out. Deterministic off the pane's own position, so the same
+    // window is the same colour every run.
     const h = hash(
-      Math.round(c.x * 90),
-      Math.round(c.y * 90),
-      Math.round(c.z * 90),
+      Math.round(centre.x * 90),
+      Math.round(centre.y * 90),
+      Math.round(centre.z * 90),
     );
-    if (h < 0.16) return DARK;
+    if (h < DARK_ODDS) return DARK;
     // pushed past 1.0 so the bloom pass catches the lit panes; the dark ones
     // stay where they are
     return lit(HUES[Math.floor(h * HUES.length)], 0.1, 1.45);
   });
-
-  inLocalFrame(root, (size) => {
-    // a shop sign over the street frontage
-    const sign = new Mesh(
-      new BoxGeometry(size.x * 0.48, size.y * 0.07, size.z * 0.05),
-      glowMaterial(SIGN_CYAN, 0.15, 0.9),
-    );
-    sign.position.set(0, size.y * 0.22, size.z * 0.52);
-    root.add(pulsing(sign, 0.34, 2.8, 0.9));
-  });
 }
 
-function dressTaxi(root: Object3D) {
-  // headlights and tail lights are their own materials in the source, so they
-  // just need taking off the light rig
+// The horizontal box of everything above `y`, in the prop's own frame.
+//
+// Kay's tall building is a 2.0-wide block for four fifths of its height and a
+// 1.2-wide shaft above that, offset to one side. A band sized off the whole
+// bounding box therefore hangs a third of itself in the air beside the shaft,
+// which is what the tower's top two rings were doing. Buildings only ever step
+// INWARD going up, so "what is above this height" is exactly what a band at
+// this height has to wrap — and it gives the band its centre as well as its
+// size, which matters here because the setback is not concentric.
+function above(root: Object3D, y: number): Box3 {
+  const box = new Box3().makeEmpty();
+  const at = new Vector3();
   root.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
-    const name = (mesh.material as MeshBasicMaterial)?.name;
-    if (name === "Headlights") {
-      mesh.material = unlitNeon(SIGN_CYAN, 0.3, 1.9); // headlights, brightest
-      pulsing(mesh, 0.1, 3.4, 0.2);
-    } else if (name === "TailLights") {
-      mesh.material = unlitNeon("#ff2f4f", 0.2, 1.5);
-      pulsing(mesh, 0.14, 2.6, 2.4);
+    const position = mesh.geometry.attributes.position as BufferAttribute;
+    for (let i = 0; i < position.count; i++) {
+      at.fromBufferAttribute(position, i);
+      mesh.localToWorld(at); // root is flattened, so this lands in root space
+      if (at.y >= y) box.expandByPoint(at);
     }
   });
+  return box.isEmpty() ? new Box3().setFromObject(root) : box;
+}
 
-  // underglow — a flat disc of light on the road under the car
+// The centroid of everything in the top `band` of a prop, in the prop's own
+// frame. Reads a lamp head off the geometry instead of hard-coding an offset
+// to it, which is what lets one function light a street lamp whose boom hangs
+// left and a pedestrian signal that has no boom at all.
+function headOf(root: Object3D, box: Box3, band: number): Vector3 {
+  const floor = box.max.y - (box.max.y - box.min.y) * band;
+  const sum = new Vector3();
+  const at = new Vector3();
+  let n = 0;
+  root.traverse((o) => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh) return;
+    const position = mesh.geometry.attributes.position as BufferAttribute;
+    for (let i = 0; i < position.count; i++) {
+      at.fromBufferAttribute(position, i);
+      mesh.localToWorld(at); // root is flattened, so this lands in root space
+      if (at.y >= floor) {
+        sum.add(at);
+        n++;
+      }
+    }
+  });
+  return n ? sum.divideScalar(n) : box.getCenter(new Vector3());
+}
+
+// ------------------------------------------------------------------ props ---
+
+const FLOORS = 4; // Kay's tall building has four storeys, so four bands
+
+// The tall one. Its windows light like every other building's, and the colour
+// that makes it the tower goes on as fittings: bands round it, a crown, and a
+// sign down one corner.
+//
+// This started out repainting the facade itself, one hue per floor, which
+// turned the whole building into a stack of coloured stripes: it stopped being
+// a tower and became a swatch. Bands wrapped round it read as a lit building
+// because the building is still there behind them.
+function dressTower(root: Object3D) {
+  lightWindows(root);
+  inLocalFrame(root, (size, box) => {
+    // An open four-sided tube turned 45°, so its flats sit just off the
+    // tower's four walls: a ring of light round the building with no lid and
+    // no far wall to double up on.
+    //
+    // Scaled and centred per axis off `above`, NOT off one radius on the whole
+    // model. Kenney's tower was square in plan and concentric all the way up,
+    // so a single circumscribing radius fitted every band on it; Kay's is 2.0
+    // wide by 1.3 deep and steps in to 1.2 near the top, off to one side.
+    // Turned 45°, a unit tube's flats sit at 1/√2 from the axis, so the scale
+    // that lands them on the walls is half the width times √2.
+    const wrap = (
+      hue: string,
+      at: number,
+      thickness: number,
+      opacity: number,
+      out: number,
+    ) => {
+      const y = box.min.y + size.y * at;
+      const shaft = above(root, y);
+      const span = shaft.getSize(new Vector3());
+      const mesh = new Mesh(
+        new CylinderGeometry(1, 1, size.y * thickness, 4, 1, true),
+        glowMaterial(hue, 0.06, opacity, 1.5, FrontSide),
+      );
+      mesh.rotation.y = Math.PI / 4;
+      mesh.scale.set(
+        (span.x / 2) * Math.SQRT2 * 1.05 * out,
+        1,
+        (span.z / 2) * Math.SQRT2 * 1.05 * out,
+      );
+      const middle = shaft.getCenter(new Vector3());
+      mesh.position.set(middle.x, y, middle.z);
+      return mesh;
+    };
+
+    for (let i = 0; i < FLOORS; i++) {
+      // each band on its own clock, slower the higher it goes
+      const at = (i + 0.7) / (FLOORS + 0.6);
+      root.add(
+        pulsing(
+          wrap(HUES[i % HUES.length], at, 0.012, 0.9, 1),
+          0.16,
+          2.4 - i * 0.22,
+          i * 1.7,
+        ),
+      );
+    }
+
+    // a crown, so the tallest thing on the island doesn't just stop
+    root.add(
+      pulsing(wrap(SIGN_CYAN, 0.985, 0.016, 0.85, 0.98), 0.18, 1.3, 0.4),
+    );
+
+    // And a vertical sign running down one corner — the detail that makes a
+    // tower read as somebody's tower rather than an office block. Hung off the
+    // shaft's corner rather than the model's, for the same reason as the bands.
+    const shaft = above(root, box.min.y + size.y * 0.86);
+    const spine = new Mesh(
+      new BoxGeometry(size.x * 0.05, size.y * 0.44, size.z * 0.12),
+      glowMaterial(SIGN_MAGENTA, 0.18, 0.9),
+    );
+    spine.position.set(
+      shaft.max.x + size.x * 0.02,
+      box.min.y + size.y * 0.64,
+      shaft.max.z + size.z * 0.02,
+    );
+    root.add(pulsing(spine, 0.3, 2.1, 1.9));
+  });
+}
+
+// A shop sign over a frontage, and the light it throws on the pavement. Every
+// one of Kay's buildings fronts its +z face — the windows are all on one side —
+// so a sign always goes on +z and always faces the street the building was
+// turned toward in islandLayout.ts.
+function shopfront(root: Object3D, hue: string, at: number, phase: number) {
   inLocalFrame(root, (size) => {
+    const sign = new Mesh(
+      new BoxGeometry(size.x * 0.46, size.y * 0.06, size.z * 0.04),
+      glowMaterial(hue, 0.15, 0.9),
+    );
+    sign.position.set(0, size.y * at, size.z * 0.52);
+    root.add(pulsing(sign, 0.34, 2.8, phase));
+
+    const spill = new Mesh(
+      new CircleGeometry(size.x * 0.42, 18),
+      glowMaterial(hue, 0.1, 0.3),
+    );
+    spill.rotation.x = -Math.PI / 2;
+    spill.position.set(0, size.y * 0.006, size.z * 0.72);
+    root.add(pulsing(spill, 0.24, 2.8, phase));
+  });
+}
+
+// The corner block: lit flats over a shopfront, which is what the model is.
+function dressBlock(root: Object3D) {
+  lightWindows(root);
+  shopfront(root, SIGN_CYAN, 0.2, 0.9);
+}
+
+// The low one, and the only building on the block whose ground floor is open.
+// It comes out of the kitbash a shade brighter than its neighbours (CITY_LIT)
+// and gets the warmest sign on the island, low down where an awning is.
+function dressShop(root: Object3D) {
+  lightWindows(root);
+  shopfront(root, "#ffab3d", 0.34, 2.2);
+}
+
+// Everything else with windows in it — the mid-rise, the walk-up, the terrace.
+// No sign: a street where every building has one is a strip, and these are the
+// ones the lit corners are supposed to stand out against.
+const dressPlain = lightWindows;
+
+function dressTaxi(root: Object3D) {
+  inLocalFrame(root, (size, box) => {
+    // Kay models every car nose to +z — the bonnet end is the one with the
+    // lower roofline — so the head and tail lamps can be placed off the box.
+    const lamp = (hex: string, z: number, gain: number) => {
+      const glow = new Mesh(
+        new SphereGeometry(size.x * 0.16, 8, 6),
+        glowMaterial(hex, 0.2, 0.65, gain),
+      );
+      glow.position.set(0, box.min.y + size.y * 0.42, z);
+      return glow;
+    };
+    root.add(pulsing(lamp(SIGN_CYAN, box.max.z, 1.9), 0.1, 3.4, 0.2));
+    root.add(pulsing(lamp("#ff2f4f", box.min.z, 1.4), 0.14, 2.6, 2.4));
+
+    // The roof light. A taxi is the one car on the island anyone is meant to
+    // pick out, and this is the two-pixel detail that says which one it is.
+    const dome = new Mesh(
+      new BoxGeometry(size.x * 0.34, size.y * 0.09, size.z * 0.09),
+      unlitNeon(SIGN_MAGENTA, 0.25, 1.7),
+    );
+    dome.position.set(0, box.max.y + size.y * 0.04, size.z * 0.02);
+    root.add(pulsing(dome, 0.18, 2.9, 1.4));
+
+    // underglow — a flat disc of light on the road under the car
     const under = new Mesh(
       new CircleGeometry(Math.max(size.x, size.z) * 0.46, 20),
       glowMaterial(SIGN_MAGENTA, 0.12, 0.5),
     );
     under.rotation.x = -Math.PI / 2;
-    under.position.y = size.y * 0.03;
+    under.position.y = box.min.y + size.y * 0.03;
     root.add(pulsing(under, 0.22, 1.7, 3.1));
   });
 }
 
-function dressLamp(root: Object3D) {
-  const heads: Mesh[] = [];
-  root.traverse((o) => {
-    const mesh = o as Mesh;
-    if (mesh.isMesh && (mesh.material as MeshBasicMaterial)?.name === "Light") {
-      mesh.material = unlitNeon(SIGN_CYAN, 0.28, 1.8);
-      heads.push(pulsing(mesh, 0.12, 2.2, 1.1));
-    }
-  });
-  if (!heads.length) return;
-  // a soft ball of spill around the head, so the lamp lights something
-  inLocalFrame(root, (size) => {
-    const at = new Box3().setFromObject(heads[0]).getCenter(new Vector3());
-    const halo = new Mesh(
-      new SphereGeometry(Math.max(size.x, size.z) * 0.34, 10, 8),
-      glowMaterial(SIGN_CYAN, 0.05, 0.3),
-    );
-    halo.position.copy(at);
-    root.add(pulsing(halo, 0.2, 2.2, 1.1));
-  });
+// A street light and a pedestrian signal are the same problem: a small lit
+// head on the end of a post that points somewhere different on each of them.
+// `headOf` finds it in the geometry, so neither needs a hard-coded offset.
+function lampHead(hex: string, band: number, size: number) {
+  return (root: Object3D) => {
+    inLocalFrame(root, (extent, box) => {
+      const at = headOf(root, box, band);
+      const bulb = new Mesh(
+        new SphereGeometry(extent.x * size, 8, 6),
+        unlitNeon(hex, 0.28, 1.8),
+      );
+      bulb.position.copy(at);
+      root.add(pulsing(bulb, 0.12, 2.2, 1.1));
+
+      // A soft ball of spill around the head, so the lamp lights something.
+      // Deliberately tight: at 3.4× the bulb and a third opacity these read as
+      // cyan bubbles floating over the block rather than as lamps, because the
+      // halo was bigger than the post holding it up.
+      const halo = new Mesh(
+        new SphereGeometry(extent.x * size * 2.1, 10, 8),
+        glowMaterial(hex, 0.05, 0.14),
+      );
+      halo.position.copy(at);
+      root.add(pulsing(halo, 0.2, 2.2, 1.1));
+    });
+  };
 }
 
-function dressStall(root: Object3D) {
-  // The awning arrives as red-and-white canvas in two materials, one per
-  // stripe. Taking both off the light rig turns the whole canopy into the
-  // stall's sign — which is what a night-market awning is: the brightest
-  // thing on the stall, lighting the person under it.
-  root.traverse((o) => {
-    const mesh = o as Mesh;
-    if (!mesh.isMesh) return;
-    const name = (mesh.material as MeshBasicMaterial)?.name;
-    if (name === "RoofTiles_Red") {
-      mesh.material = unlitNeon(SIGN_MAGENTA, 0.16, 1.35);
-      pulsing(mesh, 0.16, 3.1, 2.2);
-    } else if (name === "Beige") {
-      mesh.material = unlitNeon(SIGN_CYAN, 0.16, 1.35);
-      pulsing(mesh, 0.16, 3.1, 3.9);
-    }
-  });
-
-  // and a puddle of its own light on the pavement in front
-  inLocalFrame(root, (size) => {
-    const spill = new Mesh(
-      new CircleGeometry(Math.max(size.x, size.z) * 0.7, 18),
-      glowMaterial(SIGN_MAGENTA, 0.1, 0.34),
+// The boom arm hangs off the post's own -x and carries the lenses at its far
+// end, which is the one place on the prop a bounding box can find without
+// help.
+function dressSignal(root: Object3D) {
+  inLocalFrame(root, (size, box) => {
+    const at = new Vector3(
+      box.min.x + size.x * 0.12,
+      box.max.y - size.y * 0.14,
+      box.getCenter(new Vector3()).z,
     );
-    spill.rotation.x = -Math.PI / 2;
-    spill.position.y = size.y * 0.012;
-    root.add(pulsing(spill, 0.24, 3.1, 2.2));
+    for (const [i, hex] of ["#ff2f4f", "#ffab3d", "#3dff8f"].entries()) {
+      const lens = new Mesh(
+        new SphereGeometry(size.y * 0.028, 6, 5),
+        unlitNeon(hex, 0.2, i === 0 ? 1.7 : 0.6),
+      );
+      lens.position.set(at.x, at.y - i * size.y * 0.055, at.z);
+      root.add(pulsing(lens, 0.15, 2.6 + i, i * 2.1));
+    }
   });
 }
 
@@ -437,15 +616,24 @@ function dressWatertower(root: Object3D) {
   });
 }
 
-// One entry per prop that gets lit. Anything not listed is left as the
-// kitbash built it — the dumpster and the hydrant are the dark that the neon
-// needs to be bright against.
+// One entry per prop that gets lit — world pieces and scenery alike, because
+// usePropClone runs this pass on every clone it hands out and a block of flats
+// nobody catches still has to have its lights on.
+//
+// Anything not listed is left as the kitbash built it. The dumpster, the
+// cartons, the parked cars and the hydrants are the dark that the neon needs
+// to be bright against.
 export const DRESSING: Record<string, (o: Object3D) => void> = {
   tower: dressTower,
   block: dressBlock,
+  shop: dressShop,
+  midrise: dressPlain,
+  walkup: dressPlain,
+  terrace: dressPlain,
   taxi: dressTaxi,
-  lamp: dressLamp,
-  stall: dressStall,
+  lamp: lampHead(SIGN_CYAN, 0.1, 0.22),
+  pedsignal: lampHead("#ffab3d", 0.16, 0.3),
+  signal: dressSignal,
   watertower: dressWatertower,
 };
 
