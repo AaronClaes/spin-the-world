@@ -338,6 +338,10 @@ This changes what the run means, and for the better: you are filling in the land
 
 Two normalization notes that fall out of this. `sink` exists because the default (base every prop on y=0) is right for a barrel and wrong for a pier: a dock model is a deck plus the pilings that hold it over the water, and standing it on the seabed put the deck a boat-and-a-half above the boat moored at it. And a prop's colour has to be checked against the tile it stands on — Kenney's thatched `structure-roof` samples within a shade of the sand, so at 0.26 it read as a dune rather than a hut.
 
+**Size a prop against its pack, never in isolation.** `height: 0.15` looks like a reasonable number for a wheelbarrow, and it is — right up until you notice the model is 2.7× longer than it is tall, at which point height-normalizing has produced something longer than the cottage is wide and standing through the fence beside it. The pack already knows the answer: its own models are in proportion with each other, so the scale factor the build applies should come out roughly the same for every prop in a record. `build-diorama.mjs` prints that spread per pack and warns past 2.2×.
+
+The tolerance is deliberately loose, and the first version at 1.6× is the instructive one — it lit up half the harbour, a record that looks right, because a diorama **compresses scale on purpose**: the hero ship shrinks so it fits the island, the grass tufts grow so they survive the play camera. A check you learn to ignore is worse than no check. Ground dressing is exempt as a class rather than one straggler at a time, because exempting them individually just moves the median and trips the next one.
+
 ### 8.5 Audio
 
 Music is **sequenced with Tone.js** — no stem files (§10 has the full rationale). Four "stems" are four `Tone.Channel`s: drums, bass, keys/chords, lead.

@@ -164,7 +164,12 @@ const MEADOW = island({
     mill: { q: 0, r: 0, dz: -0.02, rot: 24 },
     cottage: { q: -2, r: 1, dx: -0.02, dz: -0.03, rot: 58 },
     well: { q: 0, r: 2, dx: -0.03, dz: -0.05, rot: 15 },
-    haycart: { q: -1, r: 2, dz: -0.02, rot: 60 },
+    // Beside the lane, at its landward end. Shrinking it to the pack's own
+    // proportions stopped it being house-sized but left it inside the nearest
+    // rail, because it had been placed to look right while it was 2.5× too
+    // big — one 0.32 tile cannot hold a cart AND two fence sections, so the
+    // fence run now starts one section further along.
+    haycart: { q: -1, r: 2, dx: -0.06, dz: 0.02, rot: 60 },
     pond: { q: 2, r: -1, dx: 0.01, dz: 0.02, rot: -20 },
     sheep: { q: -1, r: -1, dx: -0.14, dz: -0.08, rot: 145 },
     fence: { q: -1, r: -1, dx: 0.01, dz: 0.01, rot: 150 },
@@ -189,7 +194,6 @@ const MEADOW = island({
     // Sections laid end to end along the lane the way the harbour lays its
     // jetty. All five hang off the path tiles they flank rather than their
     // own, so the run stays straight across a diagonal of hexes.
-    { prop: "railing", q: -1, r: 2, dx: 0.05, dz: -0.09, rot: -30 },
     { prop: "railing", q: -1, r: 2, dx: 0.19, dz: -0.02, rot: -30 },
     { prop: "railing", q: 0, r: 1, dx: -0.04, dz: -0.08, rot: -30 },
     { prop: "railing", q: 0, r: 1, dx: 0.1, dz: -0.01, rot: -30 },

@@ -31,6 +31,8 @@ import { MeshoptSimplifier } from "meshoptimizer";
 //            sprawling props need: an anchor lying on its side is 10× wider
 //            than it is tall, so sizing it by height puts a 1.4-unit prop on
 //            a 0.92-unit island
+// ownScale = exempt this prop from the proportion check below — it is
+// deliberately not drawn at its pack's own scale, or it comes from elsewhere.
 // sink = world units to bury below y=0, for the props that are NOT meant to
 // stand on the ground. Everything here is based on y=0 by default, which is
 // right for a barrel and wrong for a pier: a dock model is a deck plus the
@@ -109,9 +111,30 @@ const RECORDS = {
       file: "kaykit-hexagon/fence_stone_straight.gltf",
       height: 0.09,
     },
-    { name: "haycart", file: "kaykit-hexagon/wheelbarrow.gltf", height: 0.15 },
-    { name: "pond", file: "kaykit-hexagon/waterlily_A.gltf", width: 0.16 },
-    { name: "sheep", file: "sheep.glb", height: 0.15, pick: "Sheep" },
+    // span, NOT height. A wheelbarrow is 0.51 long and 0.19 tall in the pack's
+    // own units, so normalizing it by height blew its length out to 0.41 —
+    // longer than the cottage is wide, and far enough through the rail fence
+    // beside it to come out the other side. 0.165 is the length the pack draws
+    // it at relative to that cottage, which is the only definition of "the
+    // right size" that means anything.
+    { name: "haycart", file: "kaykit-hexagon/wheelbarrow.gltf", span: 0.165 },
+    // Deliberately ~3× the pack's own scale, hence ownScale. It is one lily
+    // pad standing in for a whole pond; drawn at the scale the pack drew it,
+    // it would be 0.05 across and invisible from the play camera.
+    {
+      name: "pond",
+      file: "kaykit-hexagon/waterlily_A.gltf",
+      width: 0.16,
+      ownScale: true,
+    },
+    // a different pack entirely, so it has no business being compared
+    {
+      name: "sheep",
+      file: "sheep.glb",
+      height: 0.15,
+      pick: "Sheep",
+      ownScale: true,
+    },
     {
       name: "watermill",
       file: "kaykit-hexagon/building_watermill_red.gltf",
@@ -151,11 +174,7 @@ const RECORDS = {
     { name: "sack", file: "kaykit-hexagon/sack.gltf", span: 0.06 },
     { name: "barrel", file: "kaykit-hexagon/barrel.gltf", height: 0.07 },
     { name: "bucket", file: "kaykit-hexagon/bucket_water.gltf", height: 0.04 },
-    {
-      name: "lumber",
-      file: "kaykit-hexagon/resource_lumber.gltf",
-      span: 0.11,
-    },
+    { name: "lumber", file: "kaykit-hexagon/resource_lumber.gltf", span: 0.22 },
     { name: "lily", file: "kaykit-hexagon/waterlily_B.gltf", width: 0.11 },
     { name: "reed", file: "kaykit-hexagon/waterplant_A.gltf", height: 0.05 },
   ],
@@ -200,7 +219,10 @@ const RECORDS = {
       sink: 0.034,
     },
     { name: "ship", file: "kenney-pirate/ship-pirate-small.glb", height: 0.36 },
-    { name: "crate", file: "kenney-pirate/crate.glb", height: 0.09 },
+    // Kenney draws a barrel 1.6× the height of a crate; at 0.09 against the
+    // barrel's 0.10 they were nearly equal, which is the wheelbarrow mistake
+    // in miniature. 0.063 is the crate the barrel beside it belongs to.
+    { name: "crate", file: "kenney-pirate/crate.glb", height: 0.063 },
     { name: "barrel", file: "kenney-pirate/barrel.glb", height: 0.1 },
     // Small, because it is now sitting IN something rather than on the beach
     // on its own — at 0.15 it was a shed with a lid.
@@ -218,9 +240,33 @@ const RECORDS = {
     // chest, so it is already there at beat 0: the hole is dug and empty for
     // the whole run, and catching hp07 is what puts something in it.
     { name: "hole", file: "kenney-pirate/hole.glb", span: 0.2 },
-    { name: "rock-shore", file: "kenney-pirate/rocks-sand-b.glb", span: 0.13 },
-    { name: "rock-small", file: "kenney-pirate/rocks-b.glb", span: 0.085 },
-    { name: "tuft", file: "kenney-pirate/grass-patch.glb", height: 0.05 },
+    // Ground dressing, exempt from the proportion check AS A CLASS rather
+    // than one straggler at a time — tagging them individually as each
+    // tripped the threshold just moved the median and tripped the next one.
+    // The check is about objects, and none of these are objects.
+    //
+    // A pack draws scatter at the size it wants scatter to
+    // READ at, not at the size it would be as an object you could pick up, so
+    // this whole group sits below its pack's object scale on purpose — the
+    // three furthest out carry ownScale to say so out loud.
+    {
+      name: "rock-shore",
+      file: "kenney-pirate/rocks-sand-b.glb",
+      span: 0.13,
+      ownScale: true,
+    },
+    {
+      name: "rock-small",
+      file: "kenney-pirate/rocks-b.glb",
+      span: 0.085,
+      ownScale: true,
+    },
+    {
+      name: "tuft",
+      file: "kenney-pirate/grass-patch.glb",
+      height: 0.05,
+      ownScale: true,
+    },
     { name: "plant", file: "kenney-pirate/grass-plant.glb", height: 0.045 },
     { name: "palm-small", file: "kenney-pirate/palm-bend.glb", height: 0.2 },
     { name: "rowboat", file: "kenney-pirate/boat-row-small.glb", span: 0.12 },
@@ -229,8 +275,18 @@ const RECORDS = {
     // Ground decals — a few millimetres thick, laid on the tile cap to break
     // up a flat hex. The island lifts them clear of it (dy) so they don't
     // z-fight the surface they're dressing.
-    { name: "sand-patch", file: "kenney-pirate/patch-sand.glb", span: 0.22 },
-    { name: "scrub-patch", file: "kenney-pirate/patch-grass.glb", span: 0.17 },
+    {
+      name: "sand-patch",
+      file: "kenney-pirate/patch-sand.glb",
+      span: 0.22,
+      ownScale: true,
+    },
+    {
+      name: "scrub-patch",
+      file: "kenney-pirate/patch-grass.glb",
+      span: 0.17,
+      ownScale: true,
+    },
   ],
   neon: [
     // Kenney's buildings share material names, so one night palette does both
@@ -321,11 +377,75 @@ const findByName = (node, name) => {
   return null;
 };
 
+// Props drawn by one artist for one pack are already in proportion with each
+// other. That is the whole reason to source a record from a single pack — and
+// it means the scale factor this script applies should come out roughly the
+// SAME for every prop in the record. When one is an outlier, the size chosen
+// for it disagrees with the pack, and the prop will look wrong next to its
+// neighbours no matter how reasonable the number looked in isolation.
+//
+// That is exactly how the meadow ended up with a wheelbarrow longer than its
+// cottage is wide: sized by `height` at a plausible-sounding 0.15, which for a
+// prop 2.7× longer than it is tall meant 2.5× everything around it. Nothing
+// about `height: 0.15` looks wrong until you compare it.
+//
+// A warning, not an error — `ownScale` marks the props that are deliberately
+// off-pack, and a new record may be mid-authoring.
+// Grouped BY PACK — the directory a prop's source sits in — because the claim
+// only holds within one artist's set.
+//
+// The bar is deliberately low. A first version warned at 1.6× and lit up half
+// the harbour, which is a record that looks right: a diorama COMPRESSES scale
+// on purpose, shrinking the hero ship so it fits the island and drawing the
+// grass tufts large so they read at all from the play camera. Enforcing a
+// pack's own proportions across a whole record fights the art direction, and
+// a check you learn to ignore is worse than no check.
+//
+// So: print the spread every time, which is what actually makes an outlier
+// obvious, and only warn past the point where it is almost certainly a units
+// mistake rather than a choice. The wheelbarrow that prompted this was 2.5×.
+const SCALE_TOLERANCE = 2.2;
+
+function checkProportions(scales) {
+  const packs = new Map();
+  for (const p of scales) {
+    if (p.ownScale) continue;
+    const pack = p.file.includes("/") ? p.file.split("/")[0] : "(loose)";
+    if (!packs.has(pack)) packs.set(pack, []);
+    packs.get(pack).push(p);
+  }
+  for (const [pack, group] of packs) {
+    // "(loose)" is every source that predates the per-pack directories — on
+    // neon that's Kenney buildings next to Quaternius street furniture, which
+    // were never in proportion with each other. No provenance, no claim.
+    if (pack === "(loose)" || group.length < 3) continue;
+    const sorted = group.map((p) => p.s).sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const ratios = group.map((p) => ({ ...p, ratio: p.s / median }));
+    const lo = Math.min(...ratios.map((p) => p.ratio));
+    const hi = Math.max(...ratios.map((p) => p.ratio));
+    console.log(
+      `  ${pack}: ${group.length} props, ${lo.toFixed(2)}–${hi.toFixed(2)}× ` +
+        `the pack's median scale`,
+    );
+    for (const p of ratios) {
+      if (p.ratio > SCALE_TOLERANCE || p.ratio < 1 / SCALE_TOLERANCE) {
+        console.warn(
+          `  ! ${p.name}: ${p.ratio.toFixed(2)}× its pack's median. That is ` +
+            `usually the wrong axis — sizing a long prop by \`height\` blows ` +
+            `its length out. Use span, or set ownScale if it's deliberate.`,
+        );
+      }
+    }
+  }
+}
+
 async function build(record, props) {
   const target = new Document();
   target.createBuffer();
   const mainScene = target.createScene(`${record}-diorama`);
   target.getRoot().setDefaultScene(mainScene);
+  const scales = [];
 
   for (const prop of props) {
     const src = await io.read(
@@ -409,12 +529,20 @@ async function build(record, props) {
       -cz * s,
     ]);
 
+    scales.push({
+      name: prop.name,
+      file: prop.file,
+      s,
+      ownScale: !!prop.ownScale,
+    });
     console.log(
       `  ${prop.name}: scale ${s.toFixed(4)} → ${size
         .map((v) => (v * s).toFixed(2))
         .join(" × ")}`,
     );
   }
+
+  checkProportions(scales);
 
   await target.transform(
     dedup(),
