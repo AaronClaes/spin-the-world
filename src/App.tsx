@@ -29,6 +29,7 @@ import { Scene } from "./scene/Scene";
 import { Countdown } from "./ui/Countdown";
 import { DebugHud } from "./ui/DebugHud";
 import { Hud } from "./ui/Hud";
+import { MuteButton } from "./ui/MuteButton";
 import { PauseOverlay } from "./ui/PauseOverlay";
 import type { RunSummary } from "./ui/ResultsOverlay";
 import { ResultsOverlay } from "./ui/ResultsOverlay";
@@ -231,6 +232,10 @@ export default function App() {
     };
   }, [phase, pause, resume]);
 
+  // Same condition the HUD renders on — the pause button comes and goes with
+  // it, and mute has to know whether that corner is taken.
+  const hudUp = phase === "playing" && !paused && !clockState.ended;
+
   return (
     <>
       <Scene
@@ -253,7 +258,7 @@ export default function App() {
         </p>
       </div>
       {SHOW_DEBUG_HUD && <DebugHud />}
-      {phase === "playing" && !paused && !clockState.ended && (
+      {hudUp && (
         <>
           <TouchControls />
           <Hud onPause={pause} />
@@ -277,6 +282,8 @@ export default function App() {
           onWall={backToWall}
         />
       )}
+      {/* last, so it paints over the overlay scrims it shares the corner with */}
+      <MuteButton besidePause={hudUp} />
     </>
   );
 }

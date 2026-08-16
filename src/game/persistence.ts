@@ -1,5 +1,6 @@
-// Per-record progress in localStorage (spec §8.7). No backend. Guarded —
-// storage can be absent (tests) or throw (private browsing quota).
+// Per-record progress in localStorage (spec §8.7), plus the one global
+// preference worth remembering. No backend. Guarded — storage can be absent
+// (tests) or throw (private browsing quota).
 
 export interface RecordProgress {
   highScore: number;
@@ -55,4 +56,26 @@ export function saveRunResult(
     // quota/private mode — progress just isn't persisted
   }
   return { progress, newHighScore };
+}
+
+// Mute is a preference, not run state: someone who muted because they're in
+// an office is still in an office after a reload, and having to find the
+// button again before the wall preview starts playing is the whole problem
+// they were trying to solve.
+const MUTED_KEY = KEY_PREFIX + "muted";
+
+export function loadMuted(): boolean {
+  try {
+    return storage()?.getItem(MUTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveMuted(muted: boolean): void {
+  try {
+    storage()?.setItem(MUTED_KEY, muted ? "1" : "0");
+  } catch {
+    // quota/private mode — the toggle still works, it just won't be remembered
+  }
 }

@@ -1115,6 +1115,74 @@ canvas {
   background: rgba(232, 226, 213, 0.12);
 }
 
+/* ------------------------------------------------------------- mute ----- */
+/* Deliberately the pause button's twin — same disc, same ring, same corner —
+   because they're the same kind of thing: the two controls that are always
+   there and never part of the game. Mute owns the corner on every screen,
+   and slides one slot left while a run is on and pause is out. Sitting above
+   the overlay scrims is what lets it stay reachable from the pause and
+   results screens without each of them having to render its own copy. */
+
+.mute-button {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(232, 226, 213, 0.3);
+  border-radius: 50%;
+  background: rgba(10, 12, 20, 0.55);
+  color: #e8e2d5;
+  cursor: pointer;
+  transition:
+    right 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* 14 + 42 + 8 — one button and a gap clear of pause */
+.mute-button.beside-pause {
+  right: 64px;
+}
+
+.mute-button:hover {
+  background: rgba(232, 226, 213, 0.12);
+}
+
+.mute-button:focus-visible {
+  outline: 3px solid #ffe9b8;
+  outline-offset: 3px;
+}
+
+.mute-button svg {
+  width: 19px;
+  height: 19px;
+  overflow: visible;
+}
+
+.mute-button svg path {
+  fill: currentColor;
+}
+
+.mute-button svg path.stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+
+/* muted reads at a glance without a label: the whole control cools down */
+.mute-button[aria-pressed="true"] {
+  color: #8f97a8;
+  border-color: rgba(232, 226, 213, 0.16);
+}
+
 /* ----------------------------------------------------- touch controls --- */
 
 .touch-zones {

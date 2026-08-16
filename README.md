@@ -34,7 +34,9 @@ record's tempo. **← → (or A/D)** switch
 grooves — on touch, tap the left/right half of the screen. Catch the notes for
 score and combo; catch the world pieces to build the tiny world on the label.
 Missed pieces come back around next revolution, but the needle is spiralling
-inward and the track is finite. **Esc** (or the ⏸ button) pauses.
+inward and the track is finite. **Esc** (or the ⏸ button) pauses. The speaker
+button in the top-right mutes everything, on any screen, and is remembered
+between visits.
 
 ## Development
 

@@ -378,6 +378,10 @@ Because the framing that matters is horizontal and `fov` is vertical, the rig ho
 
 A pause button (and `Esc`) opens an HTML overlay menu: resume / restart record / back to the wall. Implementation is `Transport.pause()` — because `beatPos` is derived from the Transport (§6.2), the disc, items, and music freeze together with zero extra state. Set the run clip's `timeScale` to 0. Also auto-pause on `visibilitychange` — a backgrounded tab suspends the AudioContext and judges _will_ alt-tab mid-run.
 
+**Mute is not pause, and it belongs on every screen.** Selecting a record starts its bed playing on the wall, before there is any pause button to reach for — so a judge in an open-plan office needs the switch to already be there. Render it from `App`, not from an overlay, so it survives the phase changes; it owns the top-right corner and steps one slot left while a run is on and the pause button is out. It sits above the overlay scrims, which is what saves every overlay from having to render its own copy.
+
+Implementation is `Tone.getDestination().mute`, deliberately **not** a volume move: master volume is already driven by the preview fades, the alive swell and the record-skip duck (§8.5), and a mute written as volume would fight all three — unmuting mid-duck would restore the wrong level. It doesn't touch the Transport either, so a muted run still turns and still scores, and unmuting drops you back into the music where it actually is. Persist it — someone who muted because of where they are is still there after a reload.
+
 ---
 
 ## 9. Art direction
