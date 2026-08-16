@@ -72,10 +72,30 @@ export interface Spot {
   rot?: number; // degrees
 }
 
+// Scenery: props the island puts down itself. Never collected, never in the
+// chart, present from the first beat — and, unlike a Spot, repeatable. The
+// same model can appear a dozen times.
+//
+// This is the difference between a world and a set of objects. Ten props on
+// thirty-one tiles leaves two thirds of the island as bare coloured plastic,
+// however good the ten are, and no amount of collecting fixes that because
+// the count is fixed by the chart. Scenery is what fills the gaps in between,
+// and it costs nothing to catch.
+//
+// A Spot is where a named thing goes; a SceneryDef is one instance of a thing
+// there may be many of, so it carries its own scale — three tufts at 0.8,
+// 1.0 and 1.3 read as three plants, where three at 1.0 read as one plant
+// stamped three times.
+export interface SceneryDef extends Spot {
+  prop: string; // named node in the diorama GLB, same namespace as a Spot's key
+  scale?: number; // multiplies the size authored in build-diorama.mjs
+}
+
 export interface IslandDef {
   tiles: Tile[];
   radius: number;
   spots: Record<string, Spot>;
+  scenery: SceneryDef[];
   palette: Record<TileKind, string>;
   waterLit: string; // the second tone water shimmers toward
   // Tile kinds whose rim is lit, and in what colour. A thin additive band
@@ -88,13 +108,24 @@ export interface IslandDef {
 
 // Build the shared plate outline, then paint it with the record's tile kinds.
 // Anything not listed in `kinds` is grass.
-function island(
-  kinds: Record<string, TileKind>,
-  spots: Record<string, Spot>,
-  palette: Record<TileKind, string>,
-  waterLit: string,
-  glow?: Partial<Record<TileKind, string>>,
-): IslandDef {
+//
+// Named rather than positional: with scenery and glow both optional, the call
+// sites were heading for `island(kinds, spots, palette, lit, undefined, [...])`.
+function island({
+  kinds,
+  spots,
+  scenery = [],
+  palette,
+  waterLit,
+  glow,
+}: {
+  kinds: Record<string, TileKind>;
+  spots: Record<string, Spot>;
+  scenery?: SceneryDef[];
+  palette: Record<TileKind, string>;
+  waterLit: string;
+  glow?: Partial<Record<TileKind, string>>;
+}): IslandDef {
   const tiles: Tile[] = [];
   for (let q = -RING; q <= RING; q++) {
     for (let r = -RING; r <= RING; r++) {
@@ -107,7 +138,7 @@ function island(
     }
   }
   const radius = Math.max(...tiles.map((t) => Math.hypot(t.x, t.z))) + HEX_R;
-  return { tiles, radius, spots, palette, waterLit, glow };
+  return { tiles, radius, spots, scenery, palette, waterLit, glow };
 }
 
 // ------------------------------------------------------------- the meadow --
@@ -115,8 +146,8 @@ function island(
 // The long props — the wall and the cart — are turned to run tangentially:
 // aimed any other way, a 0.39-long prop on a 0.92 island hangs its end out
 // over the coast.
-const MEADOW = island(
-  {
+const MEADOW = island({
+  kinds: {
     // the rise the windmill stands on, straddling the middle
     "0,0": "hill",
     "0,-1": "hill",
@@ -129,7 +160,7 @@ const MEADOW = island(
     "0,1": "path",
     "1,0": "path",
   },
-  {
+  spots: {
     mill: { q: 0, r: 0, dz: -0.02, rot: 24 },
     cottage: { q: -2, r: 1, dx: -0.02, dz: -0.03, rot: 58 },
     well: { q: 0, r: 2, dx: -0.03, dz: -0.05, rot: 15 },
@@ -143,26 +174,31 @@ const MEADOW = island(
     birch: { q: 2, r: -3, dx: -0.02, dz: 0.03, rot: 40 },
     flowers: { q: 2, r: 1, dx: -0.03, dz: -0.02, rot: 200 },
   },
-  {
+  palette: {
     grass: "#5f9c44",
     hill: "#6cab4f",
     path: "#b8925e",
     sand: "#d9c48d", // unused here — the meadow has no beach
     water: "#3f83bd",
   },
-  "#6fb6e0",
-);
+  waterLit: "#6fb6e0",
+});
 
 // ------------------------------------------------------------ the harbour --
 
-// A coast rather than a field. A bay bites into the east side, the beach that
-// rings it carries the cargo, and the lighthouse takes the middle the way the
-// windmill does on the meadow. The wild west shore is deliberately emptier —
-// but not empty: the outer ring reads as bare plain unless something stands
-// on it, so the palm, the rocks and the washed-up chest are all out there.
-const HARBOUR = island(
-  {
-    // the rocky rise the lighthouse stands on
+// A pirate cove. A bay bites into the east side, the beach that rings it
+// carries the cargo, and a fort tower takes the middle the way the windmill
+// does on the meadow — watching the one way in, which is what a tower on a
+// harbour is for.
+//
+// Ten collected props on thirty-one tiles is not a place, so the `scenery`
+// list below is roughly three times as many things again. None of them are
+// catchable and none are in the chart: they're what the island looks like
+// before you play a note, so the run fills in landmarks on a coast that
+// already exists rather than assembling one out of nothing.
+const HARBOUR = island({
+  kinds: {
+    // the rocky rise the tower stands on
     "0,0": "hill",
     "0,-1": "hill",
     // the bay, cutting in from the east coast
@@ -181,42 +217,135 @@ const HARBOUR = island(
     "-1,1": "path",
     "0,1": "path",
   },
-  {
-    lighthouse: { q: 0, r: 0, dz: -0.01, rot: 0 },
-    // The pier runs RADIALLY: it starts on the sand at (1,0) and reaches out
-    // over the bay, which is what a jetty does. Its long axis is z in the
-    // model, so 90° turns it to point along +x, straight out from the middle
-    // of the island. It stands over the water on its posts, hence the lift off
-    // the sunken water cap.
-    dock: { q: 2, r: 0, dx: -0.04, dy: 0.03, rot: 90 },
-    sailboat: { q: 3, r: -1, dx: 0.01, dz: 0.02, dy: 0.012, rot: 125 },
-    boathouse: { q: 1, r: 1, dx: -0.02, dz: 0.02, rot: 200 },
+  spots: {
+    watchtower: { q: 0, r: 0, dz: -0.01, rot: 18 },
+    // The cannon shares the rise with the tower, turned out over the bay —
+    // it's the reason the tower is there, so it shouldn't be somewhere else.
+    cannon: { q: 0, r: -1, dx: 0.05, dz: 0.02, rot: 118 },
+    // The pier head sits ON the water, not beside it: `sink` in
+    // build-diorama.mjs drives its pilings down through the surface, so the
+    // deck lands at gunwale height instead of a boat-and-a-half above it.
+    dock: { q: 2, r: 0, dx: -0.05, rot: 90 },
+    // moored off the end of the pier, bow swung toward open water
+    ship: { q: 3, r: -1, dx: 0.01, dz: 0.03, rot: 118 },
+    // pushed inland off its tile, or it shoulders into the pier head and the
+    // two of them read as one brown mass from the play camera
+    hut: { q: 1, r: 1, dx: -0.09, dz: 0.06, rot: 200 },
     // Cargo shares a beach tile the way the meadow's sheep shares one with its
     // wall — one tile over from the pier head, because landing it on (1,0) put
     // it underneath the jetty's landward end.
     crate: { q: 1, r: -1, dx: -0.05, dz: 0.03, rot: 25 },
     barrel: { q: 1, r: -1, dx: 0.05, dz: -0.04, rot: -15 },
-    anchor: { q: 2, r: -2, dz: 0.02, rot: 70 },
     // the wild shore, opposite the harbour
     palm: { q: -2, r: 3, dx: 0.02, dz: -0.03, rot: -40 },
     rocks: { q: -3, r: 1, dx: 0.03, dz: 0.01, rot: 130 },
     chest: { q: -2, r: -1, dx: -0.01, dz: 0.02, rot: 155 },
   },
-  {
-    grass: "#6b9b52", // coastal scrub — drier than the meadow's pasture
-    // Warm dark rock, not grey. The lighthouse's own red and white are the
-    // contrast here; a pale grey headland next to pale sand next to pale water
-    // left the middle of the island with no colour in it at all.
-    hill: "#6f6455",
+  // Read roughly outward: the rise, the working harbour, the beach, then the
+  // wild shore. Rotations are arbitrary on purpose — a tuft repeated at the
+  // same angle four times reads as a texture bug rather than as grass.
+  scenery: [
+    // -- the rise: a flag by the tower, and the rock it all stands on --
+    { prop: "flag", q: 0, r: 0, dx: 0.08, dz: 0.06, rot: -25 },
+    { prop: "rock-small", q: 0, r: 0, dx: -0.09, dz: 0.07, rot: 40 },
+    {
+      prop: "rock-small",
+      q: 0,
+      r: -1,
+      dx: -0.07,
+      dz: -0.05,
+      rot: 200,
+      scale: 1.3,
+    },
+    { prop: "tuft", q: 0, r: -1, dx: 0.02, dz: -0.09, rot: 75, scale: 0.9 },
+
+    // -- the boardwalk down to the water, with two more of the shed --
+    // The same model as the hut, smaller and turned: three sheds in a row is
+    // a quay, where one shed on its own is a shack someone left behind. This
+    // is the whole point of scenery being repeatable.
+    { prop: "hut", q: -1, r: 1, dx: 0.06, dz: -0.04, rot: 12, scale: 0.72 },
+    { prop: "hut", q: 0, r: 1, dx: 0.04, dz: -0.05, rot: -8, scale: 0.62 },
+    { prop: "bottle", q: -1, r: 2, dx: -0.05, dz: 0.04, rot: 15 },
+    { prop: "barrel", q: -1, r: 2, dx: 0.05, dz: -0.02, rot: 62, scale: 0.85 },
+
+    // -- the working beach: cargo spilling off the pier, a boat pulled up --
+    { prop: "sand-patch", q: 1, r: 0, dz: 0.03, rot: 20 },
+    { prop: "crate", q: 1, r: 1, dx: 0.06, dz: -0.05, rot: -40, scale: 0.85 },
+    { prop: "crate", q: 1, r: 1, dx: 0.11, dz: -0.02, rot: 12, scale: 0.7 },
+    { prop: "barrel", q: 1, r: 0, dx: -0.06, dz: -0.06, rot: 0, scale: 0.8 },
+    { prop: "rowboat", q: 2, r: -2, dx: -0.02, dz: 0.05, rot: 145 },
+    { prop: "rock-shore", q: 2, r: -2, dx: 0.06, dz: -0.05, rot: 70 },
+    { prop: "bottle", q: 1, r: -1, dx: 0.09, dz: 0.06, rot: -30 },
+
+    // -- the headland north of the bay --
+    { prop: "rock-shore", q: 1, r: -2, dx: 0.04, dz: 0.02, rot: 15 },
+    { prop: "rock-small", q: 2, r: -3, dx: -0.03, dz: 0.04, rot: 130 },
+    { prop: "tuft", q: 1, r: -3, dx: 0.03, dz: -0.02, rot: 250 },
+    { prop: "plant", q: 1, r: -2, dx: -0.07, dz: -0.06, rot: 95 },
+    { prop: "scrub-patch", q: 0, r: -2, dx: 0.02, dz: 0.01, rot: 140 },
+    { prop: "palm-small", q: 0, r: -2, dx: -0.06, dz: -0.06, rot: -15 },
+
+    // -- the wild west shore: the palm's own grove, and scrub between --
+    { prop: "palm-small", q: -1, r: 3, dx: 0.04, dz: -0.02, rot: 60 },
+    {
+      prop: "palm-small",
+      q: -2,
+      r: 3,
+      dx: -0.08,
+      dz: 0.05,
+      rot: 210,
+      scale: 0.8,
+    },
+    { prop: "scrub-patch", q: -2, r: 2, dx: -0.01, dz: 0.03, rot: 25 },
+    { prop: "tuft", q: -2, r: 2, dx: 0.07, dz: -0.05, rot: 170, scale: 1.15 },
+    { prop: "plant", q: -3, r: 2, dx: 0.02, dz: -0.04, rot: 300 },
+    { prop: "rock-small", q: -3, r: 1, dx: -0.08, dz: -0.04, rot: 55 },
+    { prop: "tuft", q: -2, r: 1, dx: 0.03, dz: 0.05, rot: 20 },
+    { prop: "plant", q: -2, r: 0, dx: -0.05, dz: 0.02, rot: 240, scale: 1.2 },
+    {
+      prop: "rock-small",
+      q: -1,
+      r: 0,
+      dx: 0.06,
+      dz: -0.07,
+      rot: 100,
+      scale: 0.9,
+    },
+    { prop: "tuft", q: -1, r: -1, dx: -0.04, dz: 0.06, rot: 285 },
+    { prop: "scrub-patch", q: -2, r: -1, dx: 0.06, dz: -0.04, rot: 65 },
+    { prop: "tuft", q: -1, r: -2, dx: 0.01, dz: 0.03, rot: 130, scale: 0.85 },
+    { prop: "plant", q: 0, r: 2, dx: 0.05, dz: -0.03, rot: 45 },
+    { prop: "tuft", q: 1, r: 2, dx: -0.03, dz: -0.02, rot: 195, scale: 1.1 },
+    {
+      prop: "rock-small",
+      q: -3,
+      r: 2,
+      dx: -0.07,
+      dz: 0.05,
+      rot: 15,
+      scale: 0.75,
+    },
+  ],
+  // Pulled toward the pack rather than chosen freely. Every prop standing on
+  // these tiles is now drawn from Kenney's 512² colormap, and a scrub tuft
+  // sampled at #61cb8b sitting on the old yellow-green #6b9b52 read as a
+  // sticker on a lawn. The tile kinds keep their jobs; the hues move to the
+  // atlas the things on top of them come from.
+  palette: {
+    grass: "#69ae7a", // coastal scrub, in the pack's green
+    // Warm dark rock, not grey — a pale grey headland next to pale sand next
+    // to pale water left the middle of the island with no colour in it at all,
+    // and the tower on top of it is already the cool thing in the frame.
+    hill: "#7a6a55",
     path: "#a8794a", // weathered boardwalk timber
-    sand: "#d8bd7d",
+    sand: "#e2c295", // the pack's sand, a shade under its own patches
     water: "#2f74b5", // open sea, deeper than the meadow's pond
   },
   // A tighter shimmer than the meadow's. The pond is two tiles and can afford
   // to sparkle; a five-tile bay swinging this far toward the light tone just
   // reads as washed out.
-  "#4a93cc",
-);
+  waterLit: "#4a93cc",
+});
 
 // --------------------------------------------------------------- the city --
 
@@ -238,8 +367,8 @@ const HARBOUR = island(
 // island, with a branch north to the canal quay and an alley south — so from
 // any angle the eye has a line to follow, which is the job the meadow's track
 // and the harbour's coastline do.
-const NEON = island(
-  {
+const NEON = island({
+  kinds: {
     // the podium, straddling the middle
     "0,0": "hill",
     "0,-1": "hill",
@@ -264,7 +393,7 @@ const NEON = island(
     "-1,2": "sand",
     "-2,2": "sand",
   },
-  {
+  spots: {
     tower: { q: 0, r: 0, dz: -0.01, rot: 18 },
     // the mid-rise sits back off the street with an alley between it and the
     // tower — buildings shoulder to shoulder on a 0.92 island just read as
@@ -289,7 +418,7 @@ const NEON = island(
     // street (the main road runs in +x, which is 90° from the model's length)
     taxi: { q: -1, r: 1, dx: 0.02, rot: 90 },
   },
-  {
+  palette: {
     // Cool slate against the label's amber paper. The island is the dark
     // thing on this record — everything that reads is either lit (the sign)
     // or a bright kerbside prop, which is what a city at night actually
@@ -306,12 +435,12 @@ const NEON = island(
   },
   // The canal shimmers violet rather than sky-blue: the only things lighting
   // it on this record are the sign and a dusk sky.
-  "#5b6fd8",
+  waterLit: "#5b6fd8",
   // The street plan, lit. Magenta down every road and cyan around the canal
   // and the forecourt: the roads were already the thing carrying the
   // composition, and this is what makes them carry it at a glance.
-  { path: "#ff2d8e", water: "#2de0ff", sand: "#ffb43d" },
-);
+  glow: { path: "#ff2d8e", water: "#2de0ff", sand: "#ffb43d" },
+});
 
 const ISLANDS: Record<string, IslandDef> = {
   meadow: MEADOW,
@@ -329,11 +458,10 @@ export interface Placement {
   rot: number; // radians
 }
 
-// Falls back to the middle of the plate for a prop with no authored spot, so
-// a record can ship a piece its island has never heard of without throwing.
-export function placementFor(island: IslandDef, prop: string): Placement {
-  const spot = island.spots[prop];
-  if (!spot) return { x: 0, y: GRASS_Y, z: 0, rot: 0 };
+// Tile coordinates and offsets to a world position. Takes the Spot rather
+// than a prop name because scenery has no name to look up: a SceneryDef IS a
+// Spot with a model attached, and there may be twelve of them.
+export function placementForSpot(island: IslandDef, spot: Spot): Placement {
   const [hx, hz] = hexToWorld(spot.q, spot.r);
   const tile = island.tiles.find((t) => t.q === spot.q && t.r === spot.r);
   return {
@@ -342,4 +470,12 @@ export function placementFor(island: IslandDef, prop: string): Placement {
     z: hz + (spot.dz ?? 0),
     rot: ((spot.rot ?? 0) * Math.PI) / 180,
   };
+}
+
+// Falls back to the middle of the plate for a prop with no authored spot, so
+// a record can ship a piece its island has never heard of without throwing.
+export function placementFor(island: IslandDef, prop: string): Placement {
+  const spot = island.spots[prop];
+  if (!spot) return { x: 0, y: GRASS_Y, z: 0, rot: 0 };
+  return placementForSpot(island, spot);
 }

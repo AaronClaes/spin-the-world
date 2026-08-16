@@ -22,10 +22,10 @@ export const harbour: RecordDef = {
   starThresholds: [0.6, 1],
 
   worldPieces: [
-    { id: "hp01", beat: 15, lane: 1, prop: "lighthouse" },
-    { id: "hp02", beat: 27, lane: 2, prop: "boathouse" },
+    { id: "hp01", beat: 15, lane: 1, prop: "watchtower" },
+    { id: "hp02", beat: 27, lane: 2, prop: "hut" },
     { id: "hp03", beat: 39, lane: 0, prop: "dock" },
-    { id: "hp04", beat: 51, lane: 1, prop: "sailboat" },
+    { id: "hp04", beat: 51, lane: 1, prop: "ship" },
     { id: "hp05", beat: 63, lane: 2, prop: "crate" },
     { id: "hp06", beat: 75, lane: 0, prop: "barrel" },
     { id: "hp07", beat: 87, lane: 2, prop: "chest" },
@@ -33,7 +33,7 @@ export const harbour: RecordDef = {
     // the last two open up — the needle is deep into the label by here and the
     // spacing wants to breathe rather than sprint to the finish
     { id: "hp09", beat: 119, lane: 0, prop: "palm" },
-    { id: "hp10", beat: 139, lane: 1, prop: "anchor" },
+    { id: "hp10", beat: 139, lane: 1, prop: "cannon" },
   ],
 
   // 8 steps per bar (eighths), lane 0 first. Step 6 stays empty everywhere —
@@ -52,5 +52,5 @@ export const harbour: RecordDef = {
 
   dioramaModel: "/models/harbour-diorama.glb",
 
-  accentColor: "#5fd8e8", // lighthouse-beam cyan — reads on near-black vinyl
+  accentColor: "#5fd8e8", // shallow-water cyan — reads on near-black vinyl
 };

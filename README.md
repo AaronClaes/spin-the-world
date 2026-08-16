@@ -13,11 +13,11 @@ Build spec: [musical-worlds.md](musical-worlds.md)
 Three are pressed, all playable from the start, and they hang on the wall left
 to right in the order they're listed here:
 
-|                | badge  | tempo                                   | world                                            |
-| -------------- | ------ | --------------------------------------- | ------------------------------------------------ |
-| **Harbour 33** | easy   | 100bpm · 12.5 RPM · sea shanty, D minor | a lighthouse coast with a jetty out over the bay |
-| **Meadow 45**  | medium | 120bpm · 15 RPM · folk, G major         | a windmill village with a pond and a dirt track  |
-| **Neon 78**    | hard   | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign     |
+|                | badge  | tempo                                   | world                                           |
+| -------------- | ------ | --------------------------------------- | ----------------------------------------------- |
+| **Harbour 33** | easy   | 100bpm · 12.5 RPM · sea shanty, D minor | a pirate cove with a fort tower over the bay    |
+| **Meadow 45**  | medium | 120bpm · 15 RPM · folk, G major         | a windmill village with a pond and a dirt track |
+| **Neon 78**    | hard   | 140bpm · 17.5 RPM · city pop, A minor   | a city block at dusk, streets and a lit sign    |
 
 BPM sets RPM — eight beats to a revolution — so the 33 is a genuinely calmer
 record to stand on as well as a slower tune, and the 78 is the hard one: more
@@ -61,7 +61,7 @@ as-is to Vercel or Netlify, no server or config needed.
 - Icons: [Phosphor Icons](https://phosphoricons.com/) — MIT
 - Runner: the Rogue wearing the Ranger's head, both from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: cape dropped, gear repainted into a sweatshirt/jeans/trainers, headphones added, run clip from the pack’s 2.0 animation library, idle and cheer from its 1.x rig, see `scripts/build-runner.mjs`)
 - Meadow props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) by Kay Lousberg — CC0 (windmill, home, well, trees, stone fence, wheelbarrow, waterlily)
-- Harbour props: [Quaternius](https://quaternius.com/) — CC0 (hut, dock, sail boat, crate, barrel, rocks, palm tree, anchor, chest). The lighthouse is built from primitives in `src/scene/procProps.ts` so its beam can turn.
+- Harbour props: [Kenney Pirate Kit](https://kenney.nl/assets/pirate-kit) — CC0 (fort tower, shed, dock, pirate ship, crate, barrel, chest, rocks, palm, cannon, plus the scenery: shore rocks, tufts, plants, a rowboat, bottles and a flag). One pack for the whole island, world pieces and scenery alike, so it all shades off a single atlas.
 - Neon props: [Kenney](https://kenney.nl/) — CC0 (skyscraper, apartment block) and [Quaternius](https://quaternius.com/) — CC0 (market stand, taxi, street light, traffic signal, water tower, dumpster, fire hydrant). All repainted for night by `recolor` in `scripts/build-diorama.mjs`. The neon sign is built from primitives so its tubes can flicker.
 - Sheep, flower bushes, and sky clouds by [Quaternius](https://quaternius.com/) — CC0
 - Every model is CC0. Sourced from [poly.pizza](https://poly.pizza/) with `scripts/poly-search.py`, which refuses to download anything not marked CC0.

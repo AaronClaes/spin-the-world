@@ -5,9 +5,8 @@
 // Sources:
 //   meadow  — KayKit Medieval Hexagon Pack (CC0, Kay Lousberg), plus
 //             Quaternius sheep / flower bushes (CC0)
-//   harbour — Quaternius (CC0) throughout; the lighthouse is built in code
-//             (src/scene/procProps.ts) rather than sourced, so it can turn its
-//             beam
+//   harbour — Kenney Pirate Kit (CC0) throughout, world pieces and scenery
+//             alike, so the whole island shades off one 512² atlas
 //   neon    — Kenney city buildings + Quaternius street furniture (both CC0),
 //             repainted for night by `recolor`; the sign is built in code so
 //             its tubes can flicker
@@ -31,6 +30,12 @@ import { MeshoptSimplifier } from "meshoptimizer";
 //            sprawling props need: an anchor lying on its side is 10× wider
 //            than it is tall, so sizing it by height puts a 1.4-unit prop on
 //            a 0.92-unit island
+// sink = world units to bury below y=0, for the props that are NOT meant to
+// stand on the ground. Everything here is based on y=0 by default, which is
+// right for a barrel and wrong for a pier: a dock model is a deck plus the
+// pilings that hold it over the water, so standing it on the seabed put the
+// deck a boat-and-a-half above the boat moored at it. Sinking it is what
+// "driven into the harbour floor" actually means.
 // pick = take one named node out of a multi-prop file.
 // simplify = collapse to this fraction of the triangles first — these render
 // about 130px tall, so a dense source model is paying for detail nobody sees.
@@ -85,25 +90,67 @@ const RECORDS = {
       pick: "Plant_Flowers",
     },
   ],
+  // One pack, end to end. The harbour used to be three: Quaternius "FirstAge"
+  // village props (untextured, flat-colour materials), a Quaternius pirate set
+  // (textured off its own atlas), and a lighthouse built from primitives. Read
+  // together they didn't look like one place — the palm and the chest were
+  // lit and shaded by different rules than the crate standing next to them.
+  //
+  // Everything below is Kenney's Pirate Kit: one material, one 512² colormap,
+  // and a period that matches what this record has always been about — wooden
+  // boats, plank jetties, a fort tower over the bay. The lighthouse is gone
+  // with it; a modern navigation light was the one thing on the island from
+  // the wrong century, and it was the only prop with no source model at all.
+  //
+  // The second half of the list is scenery: props the island places itself,
+  // several times each, that are never collected (scene/islandLayout.ts). They
+  // are ordinary named nodes in the same GLB — the distinction lives entirely
+  // in who asks for them.
   harbour: [
-    { name: "boathouse", file: "harbour-boathouse.glb", span: 0.34 },
-    // the jetty is the one prop allowed to sprawl — it's the path out to the
-    // moored boat, so it wants to read as a run of planks
-    { name: "dock", file: "harbour-dock.glb", span: 0.42 },
-    { name: "sailboat", file: "harbour-sailboat.glb", span: 0.3 },
-    { name: "crate", file: "harbour-crate.glb", height: 0.11 },
-    { name: "barrel", file: "harbour-barrel.glb", height: 0.13 },
-    { name: "rocks", file: "harbour-rocks.glb", span: 0.18 },
-    { name: "palm", file: "harbour-palm.glb", height: 0.34, simplify: 0.5 },
-    { name: "anchor", file: "harbour-anchor.glb", span: 0.17 },
-    // 22k triangles of gold coins for a prop that renders about 20px tall
+    // -- the ten world pieces, in chart order (records/harbour.ts) --
     {
-      name: "chest",
-      file: "harbour-chest.glb",
-      span: 0.19,
-      simplify: 0.08,
-      error: 0.09,
+      name: "watchtower",
+      file: "kenney-pirate/tower-complete-small.glb",
+      height: 0.34,
     },
+    // A plank-roofed shed on posts. Kenney's thatched `structure-roof` was
+    // the obvious pick and the wrong one: its roof samples within a shade of
+    // the sand tiles it stands on, so a 0.26 prop read as a dune.
+    { name: "hut", file: "kenney-pirate/structure-fence.glb", span: 0.22 },
+    // A square platform on pilings, not a run of planks — so it reads as the
+    // head of the pier, and the boardwalk tiles behind it do the walking.
+    {
+      name: "dock",
+      file: "kenney-pirate/structure-platform-dock.glb",
+      span: 0.32,
+      sink: 0.055,
+    },
+    { name: "ship", file: "kenney-pirate/ship-pirate-small.glb", height: 0.36 },
+    { name: "crate", file: "kenney-pirate/crate.glb", height: 0.09 },
+    { name: "barrel", file: "kenney-pirate/barrel.glb", height: 0.1 },
+    { name: "chest", file: "kenney-pirate/chest.glb", span: 0.15 },
+    { name: "rocks", file: "kenney-pirate/rocks-a.glb", span: 0.2 },
+    {
+      name: "palm",
+      file: "kenney-pirate/palm-detailed-straight.glb",
+      height: 0.3,
+    },
+    { name: "cannon", file: "kenney-pirate/cannon-mobile.glb", span: 0.15 },
+
+    // -- scenery: placed by the island, repeated, never collected --
+    { name: "rock-shore", file: "kenney-pirate/rocks-sand-b.glb", span: 0.13 },
+    { name: "rock-small", file: "kenney-pirate/rocks-b.glb", span: 0.085 },
+    { name: "tuft", file: "kenney-pirate/grass-patch.glb", height: 0.05 },
+    { name: "plant", file: "kenney-pirate/grass-plant.glb", height: 0.045 },
+    { name: "palm-small", file: "kenney-pirate/palm-bend.glb", height: 0.2 },
+    { name: "rowboat", file: "kenney-pirate/boat-row-small.glb", span: 0.12 },
+    { name: "bottle", file: "kenney-pirate/bottle.glb", height: 0.035 },
+    { name: "flag", file: "kenney-pirate/flag-pirate.glb", height: 0.12 },
+    // Ground decals — a few millimetres thick, laid on the tile cap to break
+    // up a flat hex. The island lifts them clear of it (dy) so they don't
+    // z-fight the surface they're dressing.
+    { name: "sand-patch", file: "kenney-pirate/patch-sand.glb", span: 0.22 },
+    { name: "scrub-patch", file: "kenney-pirate/patch-grass.glb", span: 0.17 },
   ],
   neon: [
     // Kenney's buildings share material names, so one night palette does both
@@ -276,7 +323,11 @@ async function build(record, props) {
     const cx = (b.min[0] + b.max[0]) / 2;
     const cz = (b.min[2] + b.max[2]) / 2;
     wrapper.setScale([s, s, s]);
-    wrapper.setTranslation([-cx * s, -b.min[1] * s, -cz * s]);
+    wrapper.setTranslation([
+      -cx * s,
+      -b.min[1] * s - (prop.sink ?? 0),
+      -cz * s,
+    ]);
 
     console.log(
       `  ${prop.name}: scale ${s.toFixed(4)} → ${size

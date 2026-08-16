@@ -326,6 +326,16 @@ One GLB containing all props plus the base terrain of the label, with named node
 
 On full completion: enable `aliveAnimations`, warm the lighting, swell the mix.
 
+**Scenery: the island is not only what you catch.** The chart fixes the number of collectable props at ten, and ten props on a thirty-one-tile plate leaves two thirds of the island as bare coloured plastic no matter how good the ten are. `IslandDef.scenery` is the other list: props the island puts down itself, never in the chart, never catchable, standing there from the first beat — and, unlike a `Spot`, **repeatable**. The same model appears as many times as the layout asks for, each instance carrying its own rotation and `scale`, because three tufts at 0.8/1.0/1.3 read as three plants where three at 1.0 read as one plant stamped three times.
+
+Scenery and world pieces are ordinary named nodes in the same GLB — the distinction lives entirely in who asks for them — so a model can be both. The harbour's quay is one shed collected as a world piece plus two more of it, smaller, placed as scenery.
+
+This changes what the run means, and for the better: you are filling in the landmarks of a coast that already exists, rather than assembling a place out of nothing. The ghosts still show where the ten will land, so the promise is unchanged; what's gone is the impression that the island was empty because nobody had built it yet.
+
+**Source one pack per record where you can.** The harbour was three — Quaternius "FirstAge" village props with flat-colour materials, a Quaternius pirate set on its own texture atlas, and a lighthouse built from primitives — and it read as three, because a palm and a crate standing on the same sand were being shaded by different rules. It is now Kenney's Pirate Kit end to end: one material, one 512² colormap, everything lit the same way. Coherence at this scale is not about model quality, it's about whether two neighbouring props came out of the same head.
+
+Two normalization notes that fall out of this. `sink` exists because the default (base every prop on y=0) is right for a barrel and wrong for a pier: a dock model is a deck plus the pilings that hold it over the water, and standing it on the seabed put the deck a boat-and-a-half above the boat moored at it. And a prop's colour has to be checked against the tile it stands on — Kenney's thatched `structure-roof` samples within a shade of the sand, so at 0.26 it read as a dune rather than a hut.
+
 ### 8.5 Audio
 
 Music is **sequenced with Tone.js** — no stem files (§10 has the full rationale). Four "stems" are four `Tone.Channel`s: drums, bass, keys/chords, lead.

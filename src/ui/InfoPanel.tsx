@@ -69,7 +69,7 @@ export function InfoPanel({ onClose }: Props) {
             </dd>
           </div>
           <div>
-            <dt>Props</dt>
+            <dt>Meadow props</dt>
             <dd>
               the{" "}
               <a
@@ -80,6 +80,20 @@ export function InfoPanel({ onClose }: Props) {
                 KayKit Medieval Hexagon
               </a>{" "}
               pack by Kay Lousberg — CC0
+            </dd>
+          </div>
+          <div>
+            <dt>Harbour props</dt>
+            <dd>
+              the{" "}
+              <a
+                href="https://kenney.nl/assets/pirate-kit"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Kenney Pirate Kit
+              </a>{" "}
+              — CC0, one pack for the whole island
             </dd>
           </div>
           <div>

@@ -9,9 +9,15 @@ import { useGameStore } from "../game/store";
 import { usePropClone } from "./dioramaProps";
 import { activeFlights, FLIGHT_DURATION } from "./flights";
 import { Island } from "./Island";
-import { type IslandDef, islandFor, placementFor } from "./islandLayout";
+import {
+  type IslandDef,
+  islandFor,
+  placementFor,
+  placementForSpot,
+  type SceneryDef,
+} from "./islandLayout";
 import type { NeonPulse } from "./neonDressing";
-import { BEAM_NODE, TUBES_NODE } from "./procProps";
+import { TUBES_NODE } from "./procProps";
 
 // The tiny world on the label (spec §8.4). Three states per piece, and the
 // point of the whole game is watching a piece move through them:
@@ -24,7 +30,7 @@ import { BEAM_NODE, TUBES_NODE } from "./procProps";
 // Props used to be scattered on a golden-angle spiral and frozen until all ten
 // were caught. Both are gone: positions are authored per prop per record in
 // islandLayout.ts, and every piece has an idle of its own (sails turn, sheep
-// hop, the lighthouse sweeps) the instant it arrives.
+// hop, the moored ship rocks) the instant it arrives.
 
 const DISC_TOP = DISC_THICKNESS / 2;
 const ARC_HEIGHT = 0.85;
@@ -325,13 +331,11 @@ function PlantedProp({
   const wasAlive = useRef(alive);
   const spot = useMemo(() => placementFor(island, prop), [island, prop]);
   // Parts that turn under their own power: the windmill's sails are their own
-  // node in the kitbash, the lighthouse's beam is its own node in the
-  // procedural build. Everything else moves as one piece.
+  // node in the kitbash. Everything else moves as one piece.
   const sails = useMemo(
     () => clone.getObjectByName("building_windmill_top_fan_red") ?? null,
     [clone],
   );
-  const beam = useMemo(() => clone.getObjectByName(BEAM_NODE) ?? null, [clone]);
   const tubes = useMemo(
     () => clone.getObjectByName(TUBES_NODE) ?? null,
     [clone],
@@ -408,12 +412,7 @@ function PlantedProp({
         break;
 
       // ---- harbour ----
-      case "lighthouse":
-        // the harbour's answer to the windmill: one slow sweep, quickening
-        // when the world wakes up
-        if (beam) beam.rotation.y += delta * (alive ? 0.85 : 0.55);
-        break;
-      case "sailboat":
+      case "ship":
         // moored, so it rocks on its line rather than sailing anywhere
         y += Math.sin(now * 1.15 + phase) * 0.006;
         tilt = Math.sin(now * 0.9 + phase) * 0.05;
@@ -430,7 +429,7 @@ function PlantedProp({
 
       // ---- neon ----
       case "neonsign":
-        // the city's answer to the sails and the beam. Each mesh carries its
+        // the city's answer to the windmill's sails. Each mesh carries its
         // bank and its relative burn in userData, set where the sign is built.
         if (tubes)
           for (const child of tubes.children) {
@@ -460,7 +459,7 @@ function PlantedProp({
     // building in the world drifting up and down together doesn't read as
     // liveliness, it reads as everything having come unmoored from the ground.
     // What being alive does to a prop is make its own motion louder — the
-    // sails and the beam speed up, the tubes burn harder — and that's enough.
+    // sails speed up, the ship rolls harder, the tubes burn — that's enough.
     if (aliveAt.current !== null) {
       const h = (now - aliveAt.current) / ALIVE_HOP;
       if (h >= 1) aliveAt.current = null;
@@ -485,6 +484,75 @@ function PlantedProp({
   );
 }
 
+// --------------------------------------------------------------- scenery ----
+
+// The island's own dressing: rocks, tufts, a rowboat, a pirate flag. Standing
+// there from the first beat, never caught, and repeated — the same model shows
+// up several times at different sizes and angles.
+//
+// Deliberately much simpler than a PlantedProp. No ghost, no landing puff, no
+// scale-in, and one shared idle instead of a per-prop switch: this is the stuff
+// you're supposed to look past. What it does get is the alive tint's partner
+// motion — when the world wakes up the scrub leans a little harder, so the
+// completed island moves all over rather than only where the ten pieces are.
+//
+// Everything reads its position from the SceneryDef it was handed, so adding
+// an instance is one line in islandLayout.ts and no code at all.
+function SceneryProp({
+  def,
+  island,
+  alive,
+}: {
+  def: SceneryDef;
+  island: IslandDef;
+  alive: boolean;
+}) {
+  const clone = usePropClone(def.prop, activeRun.record.dioramaModel);
+  const group = useRef<Group>(null);
+  const spot = useMemo(() => placementForSpot(island, def), [island, def]);
+  const scale = def.scale ?? 1;
+  // Every instance gets its own phase off its own position, so a tuft and the
+  // tuft on the next tile never sway together — which is the whole reason to
+  // place them by hand rather than on a spiral.
+  const phase = useMemo(() => spot.x * 9.1 + spot.z * 5.7, [spot]);
+
+  useFrame(({ clock }) => {
+    const g = group.current;
+    if (!g) return;
+    const now = clock.elapsedTime;
+    g.rotation.z = Math.sin(now * 1.15 + phase) * (alive ? 0.03 : 0.018);
+  });
+
+  return (
+    <group
+      ref={group}
+      position={[spot.x, spot.y, spot.z]}
+      rotation-y={spot.rot}
+      scale={scale}
+    >
+      <primitive object={clone} />
+    </group>
+  );
+}
+
+function Scenery({ island, alive }: { island: IslandDef; alive: boolean }) {
+  return (
+    <>
+      {island.scenery.map((def, i) => (
+        <SceneryProp
+          // Position is the identity: two instances of the same model on the
+          // same island have nothing else to tell them apart, and the list is
+          // authored, so the index is stable across renders.
+          key={`${def.prop}-${i}`}
+          def={def}
+          island={island}
+          alive={alive}
+        />
+      ))}
+    </>
+  );
+}
+
 // ------------------------------------------------------------- the world ----
 
 export function Diorama() {
@@ -502,6 +570,7 @@ export function Diorama() {
   return (
     <>
       <Island island={island} alive={alive} />
+      <Scenery island={island} alive={alive} />
       <Flights island={island} />
       {props.map((prop) => (
         <GhostProp
