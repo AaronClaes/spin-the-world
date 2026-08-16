@@ -26,6 +26,8 @@ let tick: Tone.NoiseSynth | null = null;
 let surface: Tone.NoiseSynth | null = null;
 let spin: Tone.NoiseSynth | null = null;
 let spinFilter: Tone.Filter | null = null;
+let motor: Tone.NoiseSynth | null = null;
+let motorFilter: Tone.Filter | null = null;
 
 // Idempotent; call once after Tone.start() (needle-drop click is the gesture).
 export function initSfx() {
@@ -97,6 +99,18 @@ export function initSfx() {
     envelope: { attack: 0.28, decay: 0.55, sustain: 0, release: 0.1 },
     volume: -6,
   }).connect(spinFilter);
+
+  // motor wind-down — the spin-up run backwards, and its own synth rather
+  // than the same one with a mutated envelope: spin-up is a slow swell into
+  // nothing, this is an instant hit that sags for a second and a half.
+  motorFilter = new Tone.Filter(820, "bandpass", -24);
+  motorFilter.Q.value = 2.5;
+  motorFilter.connect(out);
+  motor = new Tone.NoiseSynth({
+    noise: { type: "brown" },
+    envelope: { attack: 0.02, decay: 1.0, sustain: 0.35, release: 0.4 },
+    volume: -7,
+  }).connect(motorFilter);
 }
 
 // Note pickup: pitched to the record's scale, cycling up the pentatonic run
@@ -217,5 +231,52 @@ export function sfxSpinUp() {
     spinFilter?.frequency.setValueAtTime(150, t);
     spinFilter?.frequency.exponentialRampToValueAtTime(950, t + 0.7);
     spin?.triggerAttackRelease(0.6, t);
+  });
+}
+
+// The verdict, played into the gap the results panel is already waiting out
+// (App NEEDLE_LIFT_MS). The last beat pauses the Transport, so the music is
+// gone and this lands in silence, under the runner's cheer — the offset is
+// what keeps it from stepping on the needle lift that fires at the same
+// instant. Both stings are the piece chime's own triad, because the piece
+// chime is the sound of the world being built and this is the report on it.
+const FINISH_DELAY = 0.45;
+
+// Won: the triad climbs and lands on the root an octave up — the one fully
+// resolved sound in the game, and it only exists for a world that came alive.
+export function sfxFinishWin() {
+  if (!chime || !pluck || !thump) return;
+  const { pieceChime, pieceThump } = songVoicing();
+  const t = Tone.now() + FINISH_DELAY;
+  const top = Tone.Frequency(pieceChime[0]).transpose(12).toNote();
+  safely(() => {
+    thump?.triggerAttackRelease(pieceThump, "4n", t, 0.85);
+    chime?.triggerAttackRelease(pieceChime[0], "8n", t, 0.7);
+    chime?.triggerAttackRelease(pieceChime[1], "8n", t + 0.11, 0.7);
+    chime?.triggerAttackRelease(pieceChime[2], "8n", t + 0.22, 0.75);
+    chime?.triggerAttackRelease(top, "2n", t + 0.35, 0.85);
+    // the triad held under the top note goes on the pluck, not the chime:
+    // chime's maxPolyphony is 6 and the arpeggio's tails are still ringing
+    pluck?.triggerAttackRelease(pieceChime[1], "4n", t + 0.35, 0.4);
+    pluck?.triggerAttackRelease(pieceChime[2], "4n", t + 0.35, 0.4);
+  });
+}
+
+// Lost: the same triad falling, over the platter winding down. Not a buzzer —
+// nothing was done wrong, the record simply ran out before the world was
+// finished, so the sound is the machine stopping rather than a penalty.
+export function sfxFinishFail() {
+  if (!chime || !thud || !motor || !motorFilter) return;
+  const { pieceChime, skipThud } = songVoicing();
+  const t = Tone.now() + FINISH_DELAY;
+  safely(() => {
+    motorFilter?.frequency.cancelScheduledValues(t);
+    motorFilter?.frequency.setValueAtTime(820, t);
+    motorFilter?.frequency.exponentialRampToValueAtTime(90, t + 0.95);
+    motor?.triggerAttackRelease(0.85, t);
+    chime?.triggerAttackRelease(pieceChime[2], "8n", t, 0.5);
+    chime?.triggerAttackRelease(pieceChime[1], "8n", t + 0.13, 0.45);
+    chime?.triggerAttackRelease(pieceChime[0], "4n", t + 0.26, 0.5);
+    thud?.triggerAttackRelease(skipThud, "4n", t + 0.26, 0.5);
   });
 }

@@ -344,6 +344,11 @@ SFX (do not skip, this is the cheapest polish available):
 - world piece pickup — chime plus a low thump
 - world piece miss — the record-skip glitch (§8.1; reserved for pieces only)
 - needle drop, needle lift, disc spin-up
+- finish win / finish lose — the verdict, one per outcome
+
+**The verdict has to be audible before it is readable.** The last beat pauses the Transport, so the music stops dead and the results panel is held back 1800ms for the needle lift (§8.2) — that gap is silent, and it is the loudest moment in the game to leave empty. Play the outcome sting into it, offset ~0.45s so it doesn't step on the needle lift firing at the same instant, and the panel then arrives confirming something the player already heard.
+
+Both stings are built from the record's own `pieceChime` triad, because that chime is the sound of the world being assembled and this is the report on it: won climbs the triad and resolves on the root an octave up — the only fully resolved sound in the game, reserved for a world that came alive. Lost falls back down the same triad over the platter winding down (the spin-up sweep run backwards, on its own synth). Deliberately not a buzzer: nothing was done wrong, the record just ran out before the world was finished, so it's the machine stopping rather than a penalty.
 
 ### 8.6 Camera
 

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { initSfx, sfxNeedleDrop, sfxNeedleLift, sfxSpinUp } from "./audio/sfx";
+import {
+  initSfx,
+  sfxFinishFail,
+  sfxFinishWin,
+  sfxNeedleDrop,
+  sfxNeedleLift,
+  sfxSpinUp,
+} from "./audio/sfx";
 import {
   pausePlayback,
   resumePlayback,
@@ -64,6 +71,10 @@ export default function App() {
     const maxScore = computeMaxScore(played);
     const piecesTotal = played.worldPieces.length;
     const completed = s.piecesCollected.length === piecesTotal;
+    // The verdict is audible before it's readable: the sting plays into the
+    // needle-lift gap, so the panel arrives confirming something already heard.
+    if (completed) sfxFinishWin();
+    else sfxFinishFail();
     const stars = starsForRun(
       completed,
       s.score,
