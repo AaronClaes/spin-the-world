@@ -28,6 +28,9 @@ let spin: Tone.NoiseSynth | null = null;
 let spinFilter: Tone.Filter | null = null;
 let motor: Tone.NoiseSynth | null = null;
 let motorFilter: Tone.Filter | null = null;
+let fanfare: Tone.PolySynth | null = null;
+let crash: Tone.NoiseSynth | null = null;
+let trombone: Tone.MonoSynth | null = null;
 
 // Idempotent; call once after Tone.start() (needle-drop click is the gesture).
 export function initSfx() {
@@ -109,8 +112,52 @@ export function initSfx() {
   motor = new Tone.NoiseSynth({
     noise: { type: "brown" },
     envelope: { attack: 0.02, decay: 1.0, sustain: 0.35, release: 0.4 },
-    volume: -7,
+    volume: -4,
   }).connect(motorFilter);
+
+  // ------------------------------------------------------- the verdict ----
+  // The two end-of-run stings get instruments nothing else in the game uses.
+  // Built out of the song's own chime and pluck they read as one more note of
+  // the track rather than a verdict on it — a fanfare has to arrive in a
+  // voice you have not heard for the last three minutes.
+
+  // Synth brass: detuned saw stack under a lowpass, and crucially a sustaining
+  // envelope. Every other voice here decays to nothing, which is why they
+  // sound like notes; a fanfare is a chord that is HELD.
+  const brassLp = new Tone.Filter(2600, "lowpass").connect(out);
+  fanfare = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: "fatsawtooth", count: 3, spread: 26 },
+    envelope: { attack: 0.02, decay: 0.18, sustain: 0.7, release: 0.5 },
+    volume: -1,
+  }).connect(brassLp);
+  // three pickups can still be releasing when the four-note chord lands
+  fanfare.maxPolyphony = 8;
+
+  // Cymbal. Long bright noise with no pitch at all — the single sound that
+  // says "announcement" rather than "melody".
+  const crashHp = new Tone.Filter(3400, "highpass").connect(out);
+  crash = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.004, decay: 1.3, sustain: 0, release: 0.4 },
+    volume: -11,
+  }).connect(crashHp);
+
+  // Sad trombone. Portamento is the whole point: the slides between the
+  // descending notes are the "wah", and the bend on the last one is the joke.
+  trombone = new Tone.MonoSynth({
+    oscillator: { type: "sawtooth" },
+    filter: { type: "lowpass", rolloff: -12, Q: 1 },
+    filterEnvelope: {
+      attack: 0.02,
+      decay: 0.3,
+      sustain: 0.45,
+      baseFrequency: 260,
+      octaves: 2.4,
+    },
+    envelope: { attack: 0.04, decay: 0.2, sustain: 0.85, release: 0.45 },
+    portamento: 0.055,
+    volume: -3,
+  }).connect(out);
 }
 
 // Note pickup: pitched to the record's scale, cycling up the pentatonic run
@@ -236,47 +283,70 @@ export function sfxSpinUp() {
 
 // The verdict, played into the gap the results panel is already waiting out
 // (App NEEDLE_LIFT_MS). The last beat pauses the Transport, so the music is
-// gone and this lands in silence, under the runner's cheer — the offset is
-// what keeps it from stepping on the needle lift that fires at the same
-// instant. Both stings are the piece chime's own triad, because the piece
-// chime is the sound of the world being built and this is the report on it.
-const FINISH_DELAY = 0.45;
+// gone and this lands in near-silence, under the runner's cheer — the offset
+// is what keeps it from stepping on the needle lift that fires at the same
+// instant, and the extra beat of nothing is what makes the sting read as a
+// separate statement instead of the track's last note.
+const FINISH_DELAY = 0.5;
 
-// Won: the triad climbs and lands on the root an octave up — the one fully
-// resolved sound in the game, and it only exists for a world that came alive.
+// Both stings are pitched off the record's tonic so they still belong to the
+// record you played, but NOTHING else about them is borrowed from the song:
+// their own instruments, their own rhythm in seconds rather than beats, so
+// the same fanfare is the same fanfare on all three records. pieceChime is
+// the tonic triad by construction, so its root is the key.
+const tonicOf = (root: string, semis: number) =>
+  Tone.Frequency(root).transpose(semis).toNote();
+
+// Won: pickup run into a held major chord, with a cymbal over the top — the
+// shape of every victory jingle ever written. Major even on the two records
+// in minor keys: the tune is over, and this is congratulations, not a coda.
 export function sfxFinishWin() {
-  if (!chime || !pluck || !thump) return;
+  if (!fanfare || !crash || !thump) return;
   const { pieceChime, pieceThump } = songVoicing();
   const t = Tone.now() + FINISH_DELAY;
-  const top = Tone.Frequency(pieceChime[0]).transpose(12).toNote();
+  const base = tonicOf(pieceChime[0], -12);
+  const n = (semis: number) => tonicOf(base, semis);
   safely(() => {
-    thump?.triggerAttackRelease(pieceThump, "4n", t, 0.85);
-    chime?.triggerAttackRelease(pieceChime[0], "8n", t, 0.7);
-    chime?.triggerAttackRelease(pieceChime[1], "8n", t + 0.11, 0.7);
-    chime?.triggerAttackRelease(pieceChime[2], "8n", t + 0.22, 0.75);
-    chime?.triggerAttackRelease(top, "2n", t + 0.35, 0.85);
-    // the triad held under the top note goes on the pluck, not the chime:
-    // chime's maxPolyphony is 6 and the arpeggio's tails are still ringing
-    pluck?.triggerAttackRelease(pieceChime[1], "4n", t + 0.35, 0.4);
-    pluck?.triggerAttackRelease(pieceChime[2], "4n", t + 0.35, 0.4);
+    // ta-da-da…
+    fanfare?.triggerAttackRelease(n(0), 0.16, t, 0.82);
+    fanfare?.triggerAttackRelease(n(4), 0.16, t + 0.105, 0.88);
+    fanfare?.triggerAttackRelease(n(7), 0.16, t + 0.21, 0.94);
+    // …DAAA
+    fanfare?.triggerAttackRelease([n(12), n(16), n(19)], 1.0, t + 0.33, 1);
+    crash?.triggerAttackRelease(1.1, t + 0.33, 0.9);
+    thump?.triggerAttackRelease(pieceThump, 0.5, t + 0.33, 0.9);
   });
 }
 
-// Lost: the same triad falling, over the platter winding down. Not a buzzer —
-// nothing was done wrong, the record simply ran out before the world was
-// finished, so the sound is the machine stopping rather than a penalty.
+// Lost: the sad trombone. Four notes down, each slid into rather than struck
+// (that slide is the "wah"), and the last one sags a tone and a half while it
+// dies. Under it the platter winds down — the spin-up sweep run backwards —
+// so the joke still happens on a turntable. Deliberately not a buzzer:
+// nothing was done wrong, the record just ran out before the world was
+// finished.
 export function sfxFinishFail() {
-  if (!chime || !thud || !motor || !motorFilter) return;
+  if (!trombone || !thud || !motor || !motorFilter) return;
   const { pieceChime, skipThud } = songVoicing();
   const t = Tone.now() + FINISH_DELAY;
+  const base = tonicOf(pieceChime[0], -12);
+  const n = (semis: number) => tonicOf(base, semis);
   safely(() => {
     motorFilter?.frequency.cancelScheduledValues(t);
     motorFilter?.frequency.setValueAtTime(820, t);
-    motorFilter?.frequency.exponentialRampToValueAtTime(90, t + 0.95);
-    motor?.triggerAttackRelease(0.85, t);
-    chime?.triggerAttackRelease(pieceChime[2], "8n", t, 0.5);
-    chime?.triggerAttackRelease(pieceChime[1], "8n", t + 0.13, 0.45);
-    chime?.triggerAttackRelease(pieceChime[0], "4n", t + 0.26, 0.5);
-    thud?.triggerAttackRelease(skipThud, "4n", t + 0.26, 0.5);
+    motorFilter?.frequency.exponentialRampToValueAtTime(90, t + 1.3);
+    motor?.triggerAttackRelease(1.15, t);
+    thud?.triggerAttackRelease(skipThud, 0.5, t, 0.55);
+
+    trombone?.triggerAttack(n(0), t, 0.8);
+    trombone?.setNote(n(-1), t + 0.24);
+    trombone?.setNote(n(-3), t + 0.48);
+    trombone?.setNote(n(-4), t + 0.72);
+    // the droop — a slide with nowhere to land, which is the whole gag
+    trombone?.frequency.exponentialRampTo(
+      Tone.Frequency(n(-7)).toFrequency(),
+      0.5,
+      t + 1.0,
+    );
+    trombone?.triggerRelease(t + 1.45);
   });
 }

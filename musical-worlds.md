@@ -344,11 +344,15 @@ SFX (do not skip, this is the cheapest polish available):
 - world piece pickup — chime plus a low thump
 - world piece miss — the record-skip glitch (§8.1; reserved for pieces only)
 - needle drop, needle lift, disc spin-up
-- finish win / finish lose — the verdict, one per outcome
+- finish win / finish lose — the verdict, one per outcome, on instruments nothing else uses
 
-**The verdict has to be audible before it is readable.** The last beat pauses the Transport, so the music stops dead and the results panel is held back 1800ms for the needle lift (§8.2) — that gap is silent, and it is the loudest moment in the game to leave empty. Play the outcome sting into it, offset ~0.45s so it doesn't step on the needle lift firing at the same instant, and the panel then arrives confirming something the player already heard.
+**The verdict has to be audible before it is readable.** The last beat pauses the Transport, so the music stops dead and the results panel is held back 1800ms for the needle lift (§8.2) — that gap is silent, and it is the loudest moment in the game to leave empty. Play the outcome sting into it, offset ~0.5s so it doesn't step on the needle lift firing at the same instant, and the panel then arrives confirming something the player already heard.
 
-Both stings are built from the record's own `pieceChime` triad, because that chime is the sound of the world being assembled and this is the report on it: won climbs the triad and resolves on the root an octave up — the only fully resolved sound in the game, reserved for a world that came alive. Lost falls back down the same triad over the platter winding down (the spin-up sweep run backwards, on its own synth). Deliberately not a buzzer: nothing was done wrong, the record just ran out before the world was finished, so it's the machine stopping rather than a penalty.
+**A verdict needs its own instruments.** The first version of these stings was built from the record's own `pieceChime` triad on the same synths the pickups use, on the theory that the sting should belong to the record. It doesn't work: played in the song's voice it reads as one more note of the song rather than a judgement on it. A fanfare has to arrive in a voice you have not heard for the last three minutes. Give both stings synths nothing else uses — a detuned saw brass stack with a **sustaining** envelope (every other voice in `sfx.ts` decays to nothing, which is exactly why they sound like notes; a fanfare is a chord that is _held_), a noise cymbal, and a portamento mono synth — and time them in seconds rather than note values, so the same fanfare is the same fanfare on all three records.
+
+What stays borrowed is only the key: both are pitched off `pieceChime[0]`, which is the tonic by construction. Won is a three-note pickup run into a held major chord with a crash over the top — **major even on the two records in minor keys**, because the tune is over and this is congratulations, not a coda. Lost is a sad trombone: four notes down, each _slid_ into rather than struck (that portamento is the "wah"), then a bend that sags a fifth while it dies, over the platter winding down. Deliberately not a buzzer — nothing was done wrong, the record just ran out before the world was finished.
+
+Verify these by measurement, not by ear alone: sample RMS and the dominant sub-1.2kHz bin off an analyser on the destination. It catches the things that are invisible otherwise — a sting quieter than the music it is supposed to cap, a "held" chord whose envelope actually decays, a pitch bend that never moves.
 
 ### 8.6 Camera
 
