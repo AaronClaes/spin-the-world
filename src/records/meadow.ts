@@ -35,7 +35,7 @@ export const meadow: RecordDef = {
     { id: "wp05", beat: 63, lane: 0, prop: "sheep" },
     { id: "wp06", beat: 75, lane: 2, prop: "fence" },
     { id: "wp07", beat: 87, lane: 1, prop: "haycart" },
-    { id: "wp08", beat: 99, lane: 0, prop: "flowers" },
+    { id: "wp08", beat: 99, lane: 0, prop: "watermill" },
     { id: "wp09", beat: 123, lane: 2, prop: "birch" },
     { id: "wp10", beat: 147, lane: 1, prop: "well" },
   ],

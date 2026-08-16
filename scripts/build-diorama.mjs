@@ -3,8 +3,9 @@
 // normalized to its miniature size on the record label and standing on y=0.
 //
 // Sources:
-//   meadow  — KayKit Medieval Hexagon Pack (CC0, Kay Lousberg), plus
-//             Quaternius sheep / flower bushes (CC0)
+//   meadow  — KayKit Medieval Hexagon Pack 1.0 (CC0, Kay Lousberg) for the
+//             village and its scenery, plus one Quaternius sheep (CC0),
+//             because neither pack in use here has an animal
 //   harbour — Kenney Pirate Kit (CC0) throughout, world pieces and scenery
 //             alike, so the whole island shades off one 512² atlas
 //   neon    — Kenney city buildings + Quaternius street furniture (both CC0),
@@ -73,22 +74,90 @@ const NIGHT_TOWER = {
 };
 
 const RECORDS = {
+  // KayKit's Medieval Hexagon pack, same treatment as the harbour: one pack,
+  // one atlas, world pieces and scenery out of the same box. The village was
+  // already mostly this — what went was a Quaternius flower clump that read as
+  // a pale smudge at label scale, replaced by the pack's watermill, which is
+  // both a second building for a village that only had one and a second thing
+  // on the island that MOVES: its wheel is a separate node, exactly like the
+  // windmill's sails, so the two landmarks answer each other across the pond.
+  //
+  // The sheep is the one model here from anywhere else. Neither KayKit's free
+  // pack nor Kenney's nature kit has an animal, and a meadow with nothing
+  // alive on it is a worse trade than a mildly rounder silhouette.
   meadow: [
-    { name: "mill", file: "building_windmill_red.gltf", height: 0.44 },
-    { name: "cottage", file: "building_home_A_red.gltf", height: 0.3 },
-    { name: "oak", file: "tree_single_A.gltf", height: 0.3 },
-    { name: "birch", file: "tree_single_B.gltf", height: 0.33 },
-    { name: "well", file: "building_well_red.gltf", height: 0.2 },
-    { name: "fence", file: "fence_stone_straight.gltf", height: 0.09 },
-    { name: "haycart", file: "wheelbarrow.gltf", height: 0.15 },
-    { name: "pond", file: "waterlily_A.gltf", width: 0.16 },
+    // -- the ten world pieces, in chart order (records/meadow.ts) --
+    {
+      name: "mill",
+      file: "kaykit-hexagon/building_windmill_red.gltf",
+      height: 0.44,
+    },
+    {
+      name: "cottage",
+      file: "kaykit-hexagon/building_home_A_red.gltf",
+      height: 0.3,
+    },
+    { name: "oak", file: "kaykit-hexagon/tree_single_A.gltf", height: 0.3 },
+    { name: "birch", file: "kaykit-hexagon/tree_single_B.gltf", height: 0.33 },
+    {
+      name: "well",
+      file: "kaykit-hexagon/building_well_red.gltf",
+      height: 0.2,
+    },
+    {
+      name: "fence",
+      file: "kaykit-hexagon/fence_stone_straight.gltf",
+      height: 0.09,
+    },
+    { name: "haycart", file: "kaykit-hexagon/wheelbarrow.gltf", height: 0.15 },
+    { name: "pond", file: "kaykit-hexagon/waterlily_A.gltf", width: 0.16 },
     { name: "sheep", file: "sheep.glb", height: 0.15, pick: "Sheep" },
     {
-      name: "flowers",
-      file: "flowers.glb",
-      height: 0.13,
-      pick: "Plant_Flowers",
+      name: "watermill",
+      file: "kaykit-hexagon/building_watermill_red.gltf",
+      height: 0.34,
     },
+
+    // -- scenery: placed by the island, repeated, never collected --
+    // Three sizes of copse rather than one tree repeated: the pack ships them
+    // pre-clustered, and a stand of trees is the cheapest way to turn an empty
+    // grass hex into somewhere.
+    {
+      name: "copse-l",
+      file: "kaykit-hexagon/trees_B_large.gltf",
+      span: 0.34,
+    },
+    {
+      name: "copse-m",
+      file: "kaykit-hexagon/trees_A_medium.gltf",
+      span: 0.3,
+    },
+    { name: "copse-s", file: "kaykit-hexagon/trees_A_small.gltf", span: 0.24 },
+    {
+      name: "stump",
+      file: "kaykit-hexagon/tree_single_A_cut.gltf",
+      height: 0.07,
+    },
+    { name: "boulder", file: "kaykit-hexagon/rock_single_C.gltf", span: 0.1 },
+    { name: "stone", file: "kaykit-hexagon/rock_single_A.gltf", span: 0.09 },
+    // The track's fence, laid in runs the way the harbour lays its jetty —
+    // one section is a gate to nowhere, five in a line is a lane.
+    {
+      name: "railing",
+      file: "kaykit-hexagon/fence_wood_straight.gltf",
+      span: 0.17,
+    },
+    { name: "crate", file: "kaykit-hexagon/crate_A_small.gltf", height: 0.05 },
+    { name: "sack", file: "kaykit-hexagon/sack.gltf", span: 0.06 },
+    { name: "barrel", file: "kaykit-hexagon/barrel.gltf", height: 0.07 },
+    { name: "bucket", file: "kaykit-hexagon/bucket_water.gltf", height: 0.04 },
+    {
+      name: "lumber",
+      file: "kaykit-hexagon/resource_lumber.gltf",
+      span: 0.11,
+    },
+    { name: "lily", file: "kaykit-hexagon/waterlily_B.gltf", width: 0.11 },
+    { name: "reed", file: "kaykit-hexagon/waterplant_A.gltf", height: 0.05 },
   ],
   // One pack, end to end. The harbour used to be three: Quaternius "FirstAge"
   // village props (untextured, flat-colour materials), a Quaternius pirate set

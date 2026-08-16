@@ -79,7 +79,7 @@ export function InfoPanel({ onClose }: Props) {
               >
                 KayKit Medieval Hexagon
               </a>{" "}
-              pack by Kay Lousberg — CC0
+              pack by Kay Lousberg — CC0, village and scenery alike
             </dd>
           </div>
           <div>
@@ -97,7 +97,7 @@ export function InfoPanel({ onClose }: Props) {
             </dd>
           </div>
           <div>
-            <dt>Sheep, bushes &amp; clouds</dt>
+            <dt>Sheep &amp; clouds</dt>
             <dd>
               by{" "}
               <a

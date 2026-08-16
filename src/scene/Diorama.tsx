@@ -330,10 +330,14 @@ function PlantedProp({
   const aliveAt = useRef<number | null>(null);
   const wasAlive = useRef(alive);
   const spot = useMemo(() => placementFor(island, prop), [island, prop]);
-  // Parts that turn under their own power: the windmill's sails are their own
-  // node in the kitbash. Everything else moves as one piece.
-  const sails = useMemo(
-    () => clone.getObjectByName("building_windmill_top_fan_red") ?? null,
+  // Parts that turn under their own power. KayKit ships the windmill's sails
+  // and the watermill's wheel as their own nodes, and both discs happen to lie
+  // in XY with the axle down z — so one lookup and one axis covers the pair.
+  const spinner = useMemo(
+    () =>
+      clone.getObjectByName("building_windmill_top_fan_red") ??
+      clone.getObjectByName("building_watermill_wheel_red") ??
+      null,
     [clone],
   );
   const tubes = useMemo(
@@ -391,7 +395,13 @@ function PlantedProp({
     switch (prop) {
       case "mill":
         // sails turn on the record's own time, and pick up when the world wakes
-        if (sails) sails.rotation.z += delta * (alive ? 1.5 : 0.85);
+        if (spinner) spinner.rotation.z += delta * (alive ? 1.5 : 0.85);
+        break;
+      case "watermill":
+        // Slower than the sails and turning the other way: wind is gusty and
+        // a millrace is not, and two wheels turning at the same rate in the
+        // same direction read as one mechanism rather than two buildings.
+        if (spinner) spinner.rotation.z -= delta * (alive ? 0.9 : 0.55);
         break;
       case "sheep":
         // a hop every couple of seconds, with a look around between
@@ -401,9 +411,6 @@ function PlantedProp({
       case "oak":
       case "birch":
         tilt = Math.sin(now * 1.05 + phase) * 0.028;
-        break;
-      case "flowers":
-        tilt = Math.sin(now * 2.1 + phase) * 0.055;
         break;
       case "pond":
         // the lily rides the water it's floating on

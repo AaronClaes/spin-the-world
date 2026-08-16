@@ -172,8 +172,69 @@ const MEADOW = island({
     // something stands on it, and it's the half nearest the camera
     oak: { q: -2, r: 3, dx: 0.02, dz: -0.02, rot: -60 },
     birch: { q: 2, r: -3, dx: -0.02, dz: 0.03, rot: 40 },
-    flowers: { q: 2, r: 1, dx: -0.03, dz: -0.02, rot: 200 },
+    // The pond's other building, facing its wheel at the water. It answers
+    // the windmill across the island: two landmarks, both turning, one on the
+    // rise and one down at the water.
+    // -90, not 90. The wheel node sits on the model's -z face, and a y-rotation
+    // of +90 maps -z to -x — which put the wheel on the landward side, turning
+    // in a field. -90 maps it to +x, which is where the water is.
+    watermill: { q: 1, r: -2, dx: 0.12, dz: 0.01, rot: -90 },
   },
+  // Twenty-three of this island's thirty-one tiles are plain grass and nine
+  // of them had anything on them, which is why a windmill village read as a
+  // windmill on a lawn. Read roughly: the lane, the farmyard, the pond, then
+  // the woods closing in from the far side.
+  scenery: [
+    // -- the track, fenced down one side --
+    // Sections laid end to end along the lane the way the harbour lays its
+    // jetty. All five hang off the path tiles they flank rather than their
+    // own, so the run stays straight across a diagonal of hexes.
+    { prop: "railing", q: -1, r: 2, dx: 0.05, dz: -0.09, rot: -30 },
+    { prop: "railing", q: -1, r: 2, dx: 0.19, dz: -0.02, rot: -30 },
+    { prop: "railing", q: 0, r: 1, dx: -0.04, dz: -0.08, rot: -30 },
+    { prop: "railing", q: 0, r: 1, dx: 0.1, dz: -0.01, rot: -30 },
+    { prop: "railing", q: 1, r: 0, dx: -0.02, dz: -0.07, rot: -30 },
+    { prop: "stone", q: 0, r: 1, dx: 0.06, dz: 0.08, rot: 40 },
+
+    // -- the farmyard: the cottage's yard and the foot of the mill --
+    { prop: "sack", q: -2, r: 1, dx: 0.08, dz: 0.06, rot: 25 },
+    { prop: "sack", q: -2, r: 1, dx: 0.12, dz: 0.02, rot: -40, scale: 0.9 },
+    { prop: "crate", q: -2, r: 1, dx: -0.06, dz: 0.09, rot: 60 },
+    { prop: "barrel", q: -1, r: 1, dx: -0.05, dz: -0.05, rot: 0 },
+    { prop: "barrel", q: -1, r: 1, dx: 0.01, dz: -0.08, rot: 35, scale: 0.85 },
+    { prop: "lumber", q: -1, r: 0, dx: 0.04, dz: 0.05, rot: 110 },
+    { prop: "crate", q: 0, r: -1, dx: 0.09, dz: 0.07, rot: -20, scale: 1.1 },
+    { prop: "bucket", q: 0, r: 2, dx: 0.07, dz: 0.02, rot: 15 },
+    { prop: "bucket", q: 0, r: 2, dx: -0.09, dz: -0.06, rot: -55, scale: 0.9 },
+
+    // -- the pond: lilies and reeds around the one the player catches --
+    { prop: "lily", q: 2, r: -1, dx: -0.07, dz: 0.07, rot: 40, scale: 0.85 },
+    { prop: "lily", q: 2, r: -2, dx: 0.05, dz: -0.04, rot: 155 },
+    { prop: "reed", q: 2, r: -2, dx: -0.09, dz: 0.06, rot: 20 },
+    { prop: "reed", q: 2, r: -1, dx: 0.08, dz: -0.06, rot: 240, scale: 1.15 },
+
+    // -- the woods, closing in from the west and south --
+    { prop: "copse-l", q: -3, r: 2, dx: 0.02, dz: -0.02, rot: 25 },
+    { prop: "copse-m", q: 3, r: -2, dx: -0.02, dz: 0.02, rot: 130 },
+    { prop: "copse-m", q: -2, r: 2, dx: 0.03, dz: 0.02, rot: -50 },
+    { prop: "copse-s", q: -1, r: 3, dx: -0.02, dz: -0.03, rot: 200 },
+    { prop: "copse-s", q: -2, r: 0, dx: -0.05, dz: -0.02, rot: 75 },
+    { prop: "copse-m", q: -1, r: -2, dx: 0.02, dz: 0.01, rot: 15 },
+    { prop: "copse-s", q: 1, r: -3, dx: -0.03, dz: 0.02, rot: 160, scale: 0.9 },
+    { prop: "copse-s", q: 1, r: 2, dx: 0.04, dz: -0.03, rot: -25, scale: 0.8 },
+    // felled, beside the woodpile — the village is where the trees stop
+    { prop: "stump", q: -2, r: 0, dx: 0.08, dz: 0.06, rot: 0 },
+    { prop: "stump", q: -1, r: 0, dx: -0.03, dz: 0.02, rot: 45, scale: 0.85 },
+
+    // -- rough ground on the edges --
+    { prop: "boulder", q: 3, r: -1, dx: -0.04, dz: 0.03, rot: 60 },
+    { prop: "boulder", q: -2, r: -1, dx: 0.05, dz: -0.05, rot: 145 },
+    { prop: "stone", q: 0, r: -2, dx: -0.06, dz: 0.04, rot: 30 },
+    { prop: "stone", q: 2, r: 0, dx: 0.03, dz: -0.06, rot: 190, scale: 1.2 },
+    { prop: "boulder", q: -3, r: 1, dx: 0.09, dz: -0.07, rot: 100, scale: 0.8 },
+    { prop: "stone", q: 2, r: 1, dx: -0.02, dz: 0.03, rot: 260 },
+    { prop: "stump", q: 1, r: 1, dx: 0.06, dz: 0.04, rot: 120, scale: 0.9 },
+  ],
   palette: {
     grass: "#5f9c44",
     hill: "#6cab4f",
