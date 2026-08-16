@@ -222,12 +222,17 @@ const HARBOUR = island({
     // The cannon shares the rise with the tower, turned out over the bay —
     // it's the reason the tower is there, so it shouldn't be somewhere else.
     cannon: { q: 0, r: -1, dx: 0.05, dz: 0.02, rot: 118 },
-    // The pier head sits ON the water, not beside it: `sink` in
-    // build-diorama.mjs drives its pilings down through the surface, so the
-    // deck lands at gunwale height instead of a boat-and-a-half above it.
-    dock: { q: 2, r: 0, dx: -0.05, rot: 90 },
-    // moored off the end of the pier, bow swung toward open water
-    ship: { q: 3, r: -1, dx: 0.01, dz: 0.03, rot: 118 },
+    // The pier HEAD — the seaward end, with two more sections behind it in
+    // `scenery` running back to the beach. It sits ON the water, not beside
+    // it: `sink` in build-diorama.mjs drives the pilings down through the
+    // surface, so the deck lands at gunwale height instead of a
+    // boat-and-a-half above it.
+    dock: { q: 2, r: 0, dx: 0.03, rot: 90 },
+    // Moored ALONGSIDE the jetty, not off the end of it. Crossing the pier at
+    // an angle put a 0.32 hull through a 0.32 deck; a boat ties up parallel to
+    // the thing it is tied to, which is also why the pier wants to be long and
+    // narrow rather than one square platform.
+    ship: { q: 2, r: -1, dx: 0.12, rot: 90 },
     // pushed inland off its tile, or it shoulders into the pier head and the
     // two of them read as one brown mass from the play camera
     hut: { q: 1, r: 1, dx: -0.09, dz: 0.06, rot: 200 },
@@ -239,7 +244,8 @@ const HARBOUR = island({
     // the wild shore, opposite the harbour
     palm: { q: -2, r: 3, dx: 0.02, dz: -0.03, rot: -40 },
     rocks: { q: -3, r: 1, dx: 0.03, dz: 0.01, rot: 130 },
-    chest: { q: -2, r: -1, dx: -0.01, dz: 0.02, rot: 155 },
+    // dropped a hair into the pit that's been waiting for it all run
+    chest: { q: -2, r: -1, dx: -0.01, dz: 0.02, dy: -0.006, rot: 155 },
   },
   // Read roughly outward: the rise, the working harbour, the beach, then the
   // wild shore. Rotations are arbitrary on purpose — a tuft repeated at the
@@ -267,6 +273,16 @@ const HARBOUR = island({
     { prop: "hut", q: 0, r: 1, dx: 0.04, dz: -0.05, rot: -8, scale: 0.62 },
     { prop: "bottle", q: -1, r: 2, dx: -0.05, dz: 0.04, rot: 15 },
     { prop: "barrel", q: -1, r: 2, dx: 0.05, dz: -0.02, rot: 62, scale: 0.85 },
+
+    // -- the rest of the jetty: two more sections back to the beach --
+    // All three sections are authored against (2,0) and spaced by dx alone,
+    // rather than each sitting on the tile it physically covers. That's on
+    // purpose: placementForSpot takes its height from the tile it names, and
+    // the sand tile the landward end reaches is 0.018 proud of the water, so
+    // per-tile placement would build a jetty with a step in it. A walkway is
+    // level. Sections are 0.2 long, so 0.2 apart is butted end to end.
+    { prop: "dock", q: 2, r: 0, dx: -0.17, rot: 90 },
+    { prop: "dock", q: 2, r: 0, dx: -0.37, rot: 90 },
 
     // -- the working beach: cargo spilling off the pier, a boat pulled up --
     { prop: "sand-patch", q: 1, r: 0, dz: 0.03, rot: 20 },
@@ -313,6 +329,8 @@ const HARBOUR = island({
     },
     { prop: "tuft", q: -1, r: -1, dx: -0.04, dz: 0.06, rot: 285 },
     { prop: "scrub-patch", q: -2, r: -1, dx: 0.06, dz: -0.04, rot: 65 },
+    // the pit, dug and empty, exactly where hp07 lands
+    { prop: "hole", q: -2, r: -1, dx: -0.01, dz: 0.02, rot: 20 },
     { prop: "tuft", q: -1, r: -2, dx: 0.01, dz: 0.03, rot: 130, scale: 0.85 },
     { prop: "plant", q: 0, r: 2, dx: 0.05, dz: -0.03, rot: 45 },
     { prop: "tuft", q: 1, r: 2, dx: -0.03, dz: -0.02, rot: 195, scale: 1.1 },

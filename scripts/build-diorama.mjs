@@ -117,18 +117,25 @@ const RECORDS = {
     // the obvious pick and the wrong one: its roof samples within a shade of
     // the sand tiles it stands on, so a 0.26 prop read as a dune.
     { name: "hut", file: "kenney-pirate/structure-fence.glb", span: 0.22 },
-    // A square platform on pilings, not a run of planks — so it reads as the
-    // head of the pier, and the boardwalk tiles behind it do the walking.
+    // One SECTION of pier, not the whole pier. At 0.32 a single platform
+    // filled its tile and its planks came out coarser than everything around
+    // them — the model reads at the size the pack drew it for, and this pack
+    // draws a plank about a barrel wide. Sized down to a section, the island
+    // lays three of them end to end instead (scene/islandLayout.ts), which is
+    // also what a jetty actually is: something long and narrow you can put a
+    // boat alongside.
     {
       name: "dock",
       file: "kenney-pirate/structure-platform-dock.glb",
-      span: 0.32,
-      sink: 0.055,
+      span: 0.2,
+      sink: 0.034,
     },
     { name: "ship", file: "kenney-pirate/ship-pirate-small.glb", height: 0.36 },
     { name: "crate", file: "kenney-pirate/crate.glb", height: 0.09 },
     { name: "barrel", file: "kenney-pirate/barrel.glb", height: 0.1 },
-    { name: "chest", file: "kenney-pirate/chest.glb", span: 0.15 },
+    // Small, because it is now sitting IN something rather than on the beach
+    // on its own — at 0.15 it was a shed with a lid.
+    { name: "chest", file: "kenney-pirate/chest.glb", span: 0.1 },
     { name: "rocks", file: "kenney-pirate/rocks-a.glb", span: 0.2 },
     {
       name: "palm",
@@ -138,6 +145,10 @@ const RECORDS = {
     { name: "cannon", file: "kenney-pirate/cannon-mobile.glb", span: 0.15 },
 
     // -- scenery: placed by the island, repeated, never collected --
+    // The ring of spoil around a dug pit. Scenery rather than part of the
+    // chest, so it is already there at beat 0: the hole is dug and empty for
+    // the whole run, and catching hp07 is what puts something in it.
+    { name: "hole", file: "kenney-pirate/hole.glb", span: 0.2 },
     { name: "rock-shore", file: "kenney-pirate/rocks-sand-b.glb", span: 0.13 },
     { name: "rock-small", file: "kenney-pirate/rocks-b.glb", span: 0.085 },
     { name: "tuft", file: "kenney-pirate/grass-patch.glb", height: 0.05 },
