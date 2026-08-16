@@ -34,9 +34,10 @@ record's tempo. **← → (or A/D)** switch
 grooves — on touch, tap the left/right half of the screen. Catch the notes for
 score and combo; catch the world pieces to build the tiny world on the label.
 Missed pieces come back around next revolution, but the needle is spiralling
-inward and the track is finite. **Esc** (or the ⏸ button) pauses. The speaker
-button in the top-right mutes everything, on any screen, and is remembered
-between visits.
+inward and the track is finite. **Esc** (or the pause button) pauses. The
+top-right corner also carries mute — everything, on any screen, remembered
+between visits — and fullscreen, where the browser supports it (iPhone Safari
+doesn't, so the button isn't there).
 
 ## Development
 
@@ -57,6 +58,7 @@ as-is to Vercel or Netlify, no server or config needed.
 ## Credits
 
 - Music: sequenced with [Tone.js](https://tonejs.github.io/)
+- Icons: [Phosphor Icons](https://phosphoricons.com/) — MIT
 - Runner: the Rogue wearing the Ranger's head, both from the [KayKit Adventurers Character Pack](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg — CC0 (reworked: cape dropped, gear repainted into a sweatshirt/jeans/trainers, headphones added, run clip from the pack’s 2.0 animation library, idle and cheer from its 1.x rig, see `scripts/build-runner.mjs`)
 - Meadow props: [KayKit Medieval Hexagon Pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon) by Kay Lousberg — CC0 (windmill, home, well, trees, stone fence, wheelbarrow, waterlily)
 - Harbour props: [Quaternius](https://quaternius.com/) — CC0 (hut, dock, sail boat, crate, barrel, rocks, palm tree, anchor, chest). The lighthouse is built from primitives in `src/scene/procProps.ts` so its beam can turn.

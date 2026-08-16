@@ -16,6 +16,7 @@ import { DISC_RADIUS, DISC_THICKNESS, LABEL_RADIUS } from "../game/constants";
 import { loadProgress } from "../game/persistence";
 import { RECORDS } from "../records";
 import type { RecordDef } from "../records/types";
+import { Star } from "../ui/icons";
 import { GrooveRings } from "./Disc";
 import { usePropClone } from "./dioramaProps";
 import { Island } from "./Island";
@@ -757,9 +758,11 @@ function RecordFrame({
               aria-label={`${progress.stars} of 3 stars`}
             >
               {[0, 1, 2].map((i) => (
-                <span key={i} className={i < progress.stars ? "" : "off"}>
-                  ★
-                </span>
+                <Star
+                  key={i}
+                  weight="fill"
+                  className={i < progress.stars ? "" : "off"}
+                />
               ))}
             </div>
             {progress.highScore > 0 && (

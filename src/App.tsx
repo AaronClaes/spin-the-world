@@ -28,6 +28,7 @@ import { resetLastCatchColor } from "./scene/notePalette";
 import { Scene } from "./scene/Scene";
 import { Countdown } from "./ui/Countdown";
 import { DebugHud } from "./ui/DebugHud";
+import { FullscreenButton } from "./ui/FullscreenButton";
 import { Hud } from "./ui/Hud";
 import { MuteButton } from "./ui/MuteButton";
 import { PauseOverlay } from "./ui/PauseOverlay";
@@ -233,7 +234,7 @@ export default function App() {
   }, [phase, pause, resume]);
 
   // Same condition the HUD renders on — the pause button comes and goes with
-  // it, and mute has to know whether that corner is taken.
+  // it, and the always-on controls have to know whether that corner is taken.
   const hudUp = phase === "playing" && !paused && !clockState.ended;
 
   return (
@@ -282,8 +283,14 @@ export default function App() {
           onWall={backToWall}
         />
       )}
-      {/* last, so it paints over the overlay scrims it shares the corner with */}
-      <MuteButton besidePause={hudUp} />
+      {/* The controls that are about the room rather than the run, so they
+          outlive every phase. Last in the tree, so they paint over the overlay
+          scrims they share the corner with; shifted one slot left while the
+          HUD's pause button owns the corner. */}
+      <div className={`corner-controls${hudUp ? " beside-pause" : ""}`}>
+        <FullscreenButton />
+        <MuteButton />
+      </div>
     </>
   );
 }

@@ -126,18 +126,23 @@ canvas {
   gap: 0;
 }
 
+/* The stars are icons now, not the ★ character — but Phosphor draws at 1em in
+   currentColor, so font-size and color still size and paint them. The glow is
+   the one rule that had to change hands: text-shadow doesn't see an SVG, so
+   it's a drop-shadow on the shape itself, which is the better halo anyway —
+   it follows the points instead of blurring a box. */
 .star {
-  font-size: 3rem;
-  line-height: 1.15;
+  font-size: 3.2rem;
+  margin-bottom: 2px;
   color: #ffd27a;
-  text-shadow: 0 0 18px rgba(255, 210, 122, 0.45);
+  filter: drop-shadow(0 0 10px rgba(255, 210, 122, 0.55));
   animation: star-land 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
 .star.off {
   color: #e8e2d5;
   opacity: 0.16;
-  text-shadow: none;
+  filter: none;
   animation: star-fade 0.4s ease backwards;
 }
 
@@ -207,9 +212,9 @@ canvas {
 
 .score-bar-star {
   position: absolute;
-  top: -17px;
+  top: -14px;
   transform: translateX(-50%);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: #ffd27a;
   opacity: 0.75;
 }
@@ -496,17 +501,19 @@ canvas {
   background: rgba(232, 144, 127, 0.1);
 }
 
+/* gap rather than letter-spacing, now that these are icon boxes and not
+   characters in a line of text */
 .plaque-stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.18em;
   color: #ffd27a;
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
   font-size: 1.05rem;
-  text-shadow: 0 0 10px rgba(255, 210, 122, 0.35);
+  filter: drop-shadow(0 0 6px rgba(255, 210, 122, 0.4));
 }
 
 .plaque-stars .off {
   opacity: 0.22;
-  text-shadow: none;
 }
 
 .plaque-score {
@@ -669,6 +676,9 @@ canvas {
   position: absolute;
   top: 10px;
   right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
   margin: 0;
@@ -678,7 +688,7 @@ canvas {
   background: transparent;
   color: #e8e2d5;
   font-family: inherit;
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   line-height: 1;
   opacity: 0.55;
   cursor: pointer;
@@ -781,11 +791,10 @@ canvas {
   text-shadow: 0 1px 10px rgba(255, 255, 255, 0.5);
 }
 
-/* the HUD, overlays and buttons all speak the chunky rounded game voice */
+/* the HUD and overlays all speak the chunky rounded game voice */
 .game-hud,
 .best-score,
-.overlay,
-.pause-button {
+.overlay {
   font-family: "Baloo 2 Variable", system-ui, sans-serif;
 }
 
@@ -1097,84 +1106,78 @@ canvas {
   }
 }
 
-.pause-button {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(232, 226, 213, 0.3);
-  border-radius: 50%;
-  background: rgba(10, 12, 20, 0.55);
-  color: #e8e2d5;
-  font-size: 1rem;
-  cursor: pointer;
+/* --------------------------------------------------- corner controls ---- */
+/* Pause, mute and fullscreen are one family of thing — always available,
+   never part of the game — so they're one disc drawn three times rather than
+   three buttons that happen to look alike. Pause belongs to the HUD and comes
+   and goes with the run; the other two are about the room the game is in and
+   outlive every phase, so they ride in their own row that slides one slot
+   left when pause turns up. Sitting above the overlay scrims is what lets
+   them stay reachable from the pause and results screens without each of
+   those having to render its own copy. */
+
+:root {
+  --corner-btn: 42px;
 }
 
-.pause-button:hover {
-  background: rgba(232, 226, 213, 0.12);
+/* a finger is not a mouse pointer: the same control, comfortably tappable */
+@media (pointer: coarse) {
+  :root {
+    --corner-btn: 46px;
+  }
 }
 
-/* ------------------------------------------------------------- mute ----- */
-/* Deliberately the pause button's twin — same disc, same ring, same corner —
-   because they're the same kind of thing: the two controls that are always
-   there and never part of the game. Mute owns the corner on every screen,
-   and slides one slot left while a run is on and pause is out. Sitting above
-   the overlay scrims is what lets it stay reachable from the pause and
-   results screens without each of them having to render its own copy. */
-
-.mute-button {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  z-index: 4;
+.corner-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: var(--corner-btn);
+  height: var(--corner-btn);
   padding: 0;
   border: 1px solid rgba(232, 226, 213, 0.3);
   border-radius: 50%;
   background: rgba(10, 12, 20, 0.55);
   color: #e8e2d5;
+  /* the icons are 1em, so this is the icon size */
+  font-size: 19px;
+  line-height: 1;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition:
-    right 0.22s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.2s ease,
     color 0.2s ease,
     border-color 0.2s ease;
 }
 
-/* 14 + 42 + 8 — one button and a gap clear of pause */
-.mute-button.beside-pause {
-  right: 64px;
-}
-
-.mute-button:hover {
+.corner-button:hover {
   background: rgba(232, 226, 213, 0.12);
 }
 
-.mute-button:focus-visible {
+.corner-button:focus-visible {
   outline: 3px solid #ffe9b8;
   outline-offset: 3px;
 }
 
-.mute-button svg {
-  width: 19px;
-  height: 19px;
-  overflow: visible;
+.pause-button {
+  position: absolute;
+  top: 12px;
+  right: 14px;
 }
 
-.mute-button svg path {
-  fill: currentColor;
+.corner-controls {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+  transition: right 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mute-button svg path.stroke {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
+/* one button and a gap clear of pause */
+.corner-controls.beside-pause {
+  right: calc(14px + var(--corner-btn) + 8px);
 }
 
 /* muted reads at a glance without a label: the whole control cools down */
@@ -1222,7 +1225,7 @@ canvas {
   }
 }
 
-/* HUD must sit above the touch zones */
+/* HUD must sit above the touch zones — and the always-on row above both */
 .pause-button {
   z-index: 3;
 }

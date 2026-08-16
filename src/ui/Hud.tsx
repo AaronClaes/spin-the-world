@@ -5,6 +5,7 @@ import { loadProgress } from "../game/persistence";
 import { activeRun } from "../game/runState";
 import { useGameStore } from "../game/store";
 import { lastCatchColor } from "../scene/notePalette";
+import { Pause } from "./icons";
 import { PieceDots } from "./PieceDots";
 
 interface Props {
@@ -185,8 +186,12 @@ export function Hud({ onPause }: Props) {
         <Combo />
       </div>
       <PieceDots />
-      <button className="pause-button" onClick={onPause} aria-label="Pause">
-        ⏸
+      <button
+        className="corner-button pause-button"
+        onClick={onPause}
+        aria-label="Pause"
+      >
+        <Pause weight="fill" />
       </button>
     </>
   );

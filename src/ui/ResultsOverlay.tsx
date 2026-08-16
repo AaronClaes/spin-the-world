@@ -1,3 +1,5 @@
+import { Star } from "./icons";
+
 export interface RunSummary {
   completed: boolean;
   score: number;
@@ -56,12 +58,11 @@ export function ResultsOverlay({ summary, onReplay, onWall }: Props) {
       <div className="star-row" aria-label={`${stars} of 3 stars`}>
         {[0, 1, 2].map((i) => (
           <div key={i} className="star-slot">
-            <span
+            <Star
+              weight="fill"
               className={`star ${i < stars ? "lit" : "off"}`}
               style={{ animationDelay: `${0.4 + i * 0.22}s` }}
-            >
-              ★
-            </span>
+            />
             <span className="star-cap">{captions[i]}</span>
           </div>
         ))}
@@ -75,12 +76,16 @@ export function ResultsOverlay({ summary, onReplay, onWall }: Props) {
             style={{ "--fill": Math.min(1, frac) } as React.CSSProperties}
           />
           {/* the 2nd/3rd star thresholds, visible on the bar itself */}
-          <span className="score-bar-star" style={{ left: `${t2 * 100}%` }}>
-            ★
-          </span>
-          <span className="score-bar-star" style={{ left: "100%" }}>
-            ★
-          </span>
+          <Star
+            weight="fill"
+            className="score-bar-star"
+            style={{ left: `${t2 * 100}%` }}
+          />
+          <Star
+            weight="fill"
+            className="score-bar-star"
+            style={{ left: "100%" }}
+          />
         </div>
         {summary.newHighScore ? (
           <div className="high-chip">new high score!</div>

@@ -1,6 +1,7 @@
 import type { PointerEvent } from "react";
 import { clockState } from "../game/clockState";
 import { useGameStore } from "../game/store";
+import { CaretLeft, CaretRight } from "./icons";
 
 // Touch input (spec §13): the screen is split in two — left half steps
 // inward (toward the label), right half steps outward, mirroring ←/→. The
@@ -20,14 +21,14 @@ export function TouchControls() {
         onPointerDown={move(-1)}
         aria-label="Move to inner lane"
       >
-        ‹
+        <CaretLeft weight="bold" />
       </button>
       <button
         className="zone right"
         onPointerDown={move(1)}
         aria-label="Move to outer lane"
       >
-        ›
+        <CaretRight weight="bold" />
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { X } from "./icons";
 
 interface Props {
   onClose: () => void;
@@ -27,7 +28,7 @@ export function InfoPanel({ onClose }: Props) {
       {/* the card swallows clicks so only the scrim closes */}
       <div className="info-card pop-in" onClick={(e) => e.stopPropagation()}>
         <button className="info-close" onClick={onClose} aria-label="Close">
-          ×
+          <X weight="bold" />
         </button>
 
         <h2>Spin the World</h2>
@@ -113,6 +114,19 @@ export function InfoPanel({ onClose }: Props) {
           <div>
             <dt>App</dt>
             <dd>React, TypeScript, Zustand, Vite</dd>
+          </div>
+          <div>
+            <dt>Icons</dt>
+            <dd>
+              <a
+                href="https://phosphoricons.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Phosphor
+              </a>{" "}
+              — MIT
+            </dd>
           </div>
         </dl>
       </div>

@@ -382,6 +382,16 @@ A pause button (and `Esc`) opens an HTML overlay menu: resume / restart record /
 
 Implementation is `Tone.getDestination().mute`, deliberately **not** a volume move: master volume is already driven by the preview fades, the alive swell and the record-skip duck (§8.5), and a mute written as volume would fight all three — unmuting mid-duck would restore the wrong level. It doesn't touch the Transport either, so a muted run still turns and still scores, and unmuting drops you back into the music where it actually is. Persist it — someone who muted because of where they are is still there after a reload.
 
+**Fullscreen is mute's neighbour, and it's allowed not to exist.** On a phone the browser's address bar eats a strip off a game that is already asking you to hold the thing sideways, so the button rides in the same always-on row (`ui/FullscreenButton.tsx`). Two caveats decide the implementation: Safari still ships the API webkit-prefixed, and **iPhone Safari has never shipped element fullscreen at all** — so support is a question that has to be asked, and the answer "no" means rendering nothing rather than offering a control that does nothing when tapped. The browser owns the state, not the button: `Esc`, the system gesture and the browser's own chrome all leave fullscreen without going through it, so the icon follows `fullscreenchange` rather than a local flag.
+
+### 8.9 Icons are drawn, never typed
+
+`⏸ ★ × ‹ ›` are characters, and characters are the platform's to draw. iOS resolves `⏸` to a colour emoji out of Apple Color Emoji and `★` to a flat-sided star, so the same markup shipped a visibly different UI on a phone than it did on the desktop it was designed on — a monochrome pause button beside a blue-and-white one, sharp stars beside rounded everything-else. Every icon is an SVG from one family (Phosphor, MIT), imported through `ui/icons.ts` so the set the game uses is one short list.
+
+Phosphor draws at `size="1em"` in `currentColor`, which is what makes this a swap rather than a rewrite: every `font-size` and `color` rule that used to style the glyph still styles the icon. The one rule that changes hands is the glow — `text-shadow` can't see an SVG, so the stars' halo becomes `filter: drop-shadow(…)`, which follows the points instead of blurring a box. Spacing set with `letter-spacing` has to become a flex `gap` for the same reason: these are boxes now, not characters in a line.
+
+The three always-available controls — pause, mute, fullscreen — are one disc drawn three times (`.corner-button`), sized from a `--corner-btn` custom property that grows on `(pointer: coarse)`. The offset that parks the always-on row clear of pause is computed from that same property, so a bigger touch target can't desynchronise the layout.
+
 ---
 
 ## 9. Art direction
