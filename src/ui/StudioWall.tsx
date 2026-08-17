@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { loadProgress } from "../game/persistence";
 import type { RecordDef } from "../records/types";
 import { InfoPanel } from "./InfoPanel";
 
@@ -17,11 +18,19 @@ import { InfoPanel } from "./InfoPanel";
 export function StudioWall({
   selected,
   onPlay,
+  onExplore,
 }: {
   selected: RecordDef | null;
   onPlay: () => void;
+  onExplore: () => void;
 }) {
   const [info, setInfo] = useState(false);
+  // One star means the world was finished (game/score.ts: completion gates the
+  // first star), so the gate and the reward are the same fact — there is no
+  // such thing as a half-built island to walk around in. Read here rather than
+  // held in state because the wall remounts on the way back from a run, which
+  // is the only moment this can change.
+  const walkable = selected ? loadProgress(selected.id).stars >= 1 : false;
 
   return (
     <div className="overlay wall">
@@ -36,9 +45,26 @@ export function StudioWall({
       <div className="wall-foot">
         {selected ? (
           <>
-            <button className="play-button" onClick={onPlay}>
-              Play {selected.title}
-            </button>
+            {/* Side by side, not stacked. The foot grows upward from the
+                bottom edge and the record plaques hang just above it, so a
+                second row of buttons puts the play button through the middle
+                record's stars — which reads fine and is unclickable, because
+                an SVG star ends up on top of it. One row, same height as
+                before, and the two doors out of the wall get equal billing. */}
+            <div className="wall-actions">
+              <button className="play-button" onClick={onPlay}>
+                Play {selected.title}
+              </button>
+              {/* Only once it's been earned. A locked button here would teach
+                  the goal, but the hint line below already does, and a reward
+                  you didn't know existed is worth more than one you've been
+                  looking at greyed out since the title screen. */}
+              {walkable && (
+                <button className="secondary walk-button" onClick={onExplore}>
+                  Step inside
+                </button>
+              )}
+            </div>
             {/* the how-to the ready card used to carry, now that pressing
                 play goes straight to the count */}
             <p className="wall-hint keys">

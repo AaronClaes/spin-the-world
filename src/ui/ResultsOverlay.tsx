@@ -18,6 +18,7 @@ export interface RunSummary {
 interface Props {
   summary: RunSummary;
   onReplay: () => void;
+  onExplore: () => void;
   onWall: () => void;
 }
 
@@ -33,7 +34,12 @@ const wonSubtitle = (stars: number, t2: number) => {
   return `reach ${Math.round(t2 * 100)}% of the max score for a second star`;
 };
 
-export function ResultsOverlay({ summary, onReplay, onWall }: Props) {
+export function ResultsOverlay({
+  summary,
+  onReplay,
+  onExplore,
+  onWall,
+}: Props) {
   const { completed, stars, maxScore } = summary;
   const frac = maxScore > 0 ? summary.score / maxScore : 0;
   const [t2] = summary.starThresholds;
@@ -120,6 +126,16 @@ export function ResultsOverlay({ summary, onReplay, onWall }: Props) {
 
       <div className="menu pop-in d4">
         <button onClick={onReplay}>Spin it again</button>
+        {/* The moment it's worth offering. The island behind this panel is the
+            one you just finished and it's still turning — walking into it is a
+            better answer to "the world came alive" than reading its stats. Above
+            the wall, below the replay: chasing the next star is still the
+            habitual action. */}
+        {stars >= 1 && (
+          <button className="secondary" onClick={onExplore}>
+            Step inside
+          </button>
+        )}
         <button className="secondary" onClick={onWall}>
           Back to the wall
         </button>

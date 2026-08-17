@@ -23,6 +23,7 @@ import {
   unpartition,
 } from "@gltf-transform/functions";
 import { MeshoptSimplifier } from "meshoptimizer";
+import { writeFileSync } from "node:fs";
 
 // Exactly one of height / width / span / packScale sets the size:
 //   height — normalize by y, for things that read by how tall they are
@@ -522,6 +523,12 @@ async function build(record, props) {
   const mainScene = target.createScene(`${record}-diorama`);
   target.getRoot().setDefaultScene(mainScene);
   const scales = [];
+  // Every prop's world-space size, for the explore mode's colliders. Measured
+  // here because this is the only place that knows it: normalization already
+  // computes the bounds and the scale, so a box collider is those two numbers
+  // multiplied, and deriving it at runtime would mean re-measuring geometry
+  // the loader has already flattened.
+  const boxes = {};
 
   for (const prop of props) {
     const src = await io.read(
@@ -613,6 +620,10 @@ async function build(record, props) {
       s,
       ownScale: !!prop.ownScale,
     });
+    // The wrapper is centred on x/z with its base on y=0, so a box the size of
+    // the prop sitting half its height up is the collider, in the same local
+    // frame every consumer already places the prop in.
+    boxes[prop.name] = size.map((v) => +(v * s).toFixed(5));
     console.log(
       `  ${prop.name}: scale ${s.toFixed(4)} → ${size
         .map((v) => (v * s).toFixed(2))
@@ -631,6 +642,10 @@ async function build(record, props) {
     .pathname;
   await io.write(out, target);
   console.log(`wrote ${out}`);
+
+  const sidecar = out.replace(/-diorama\.glb$/, "-props.json");
+  writeFileSync(sidecar, `${JSON.stringify(boxes, null, 2)}\n`);
+  console.log(`wrote ${sidecar} — ${Object.keys(boxes).length} boxes`);
 }
 
 const only = process.argv[2];

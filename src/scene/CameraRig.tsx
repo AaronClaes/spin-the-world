@@ -89,6 +89,15 @@ export function CameraRig() {
   }, [cam, size]);
 
   useFrame(({ camera, clock }, delta) => {
+    // Explore mode's camera controls are makeDefault and call lookAt
+    // themselves; two writers on one camera is a fight neither wins. Bailing
+    // rather than unmounting keeps the rig's flight state intact, so coming
+    // back to the wall from explore flies from wherever Ecctrl left the camera.
+    if (clockState.explore) {
+      prevWall.current = clockState.wall;
+      return;
+    }
+
     // a wall flip (needle-drop dive or back-to-wall) starts a flight from
     // wherever the camera is right now
     if (clockState.wall !== prevWall.current) {

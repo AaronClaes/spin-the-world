@@ -7,7 +7,7 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { getTransport } from "tone";
-import { Suspense, useMemo, useRef } from "react";
+import { lazy, Suspense, useMemo, useRef } from "react";
 import type { AmbientLight, DirectionalLight, HemisphereLight } from "three";
 import { Color, Vector3 } from "three";
 import {
@@ -42,6 +42,10 @@ import { SkyWorld } from "./SkyWorld";
 import { Tonearm } from "./Tonearm";
 import { Turntable } from "./Turntable";
 import { WALL_CAM_POS, WallScene } from "./WallScene";
+
+const ExploreWorld = lazy(() =>
+  import("./explore/ExploreWorld").then((m) => ({ default: m.ExploreWorld })),
+);
 
 const events: ResolveEvent[] = [];
 
@@ -259,17 +263,26 @@ export function Scene({
   record,
   wall,
   wallMounted,
+  explore,
   selectedId,
   onSelect,
 }: {
   record: RecordDef; // the pick — only used to key the gameplay subtree
   wall: boolean; // wall look (post stack) — true only on the title screen
   wallMounted: boolean; // wall geometry in the tree — also true mid-dive
+  explore: boolean; // walking the island instead of playing the groove
   selectedId: string | null; // the frame that's lifted, spinning and audible
   onSelect: (record: RecordDef) => void;
 }) {
   return (
-    <Canvas dpr={[1, MAX_DPR]} camera={{ position: WALL_CAM_POS, fov: 42 }}>
+    <Canvas
+      dpr={[1, MAX_DPR]}
+      camera={{ position: WALL_CAM_POS, fov: 42 }}
+      // Enabled for the whole app but paid for by nobody except explore mode:
+      // three skips the shadow pass entirely while no light in the scene casts,
+      // and the only caster lives inside ExploreWorld.
+      shadows
+    >
       <Sky />
       <SkyWorld />
 
@@ -277,21 +290,31 @@ export function Scene({
       <CameraRig />
       <Lights />
 
-      <Turntable />
-      <Tonearm />
-      {/* Everything that bakes record data in at construction rather than
-          reading it per frame — instance counts, accent colours, the island
-          layout — is keyed on the record so switching records rebuilds it.
-          The wall is outside: it shows the whole shelf. */}
-      <group key={record.id}>
-        <NeedleNotes />
-        <NotePop />
-        <LaneGuides />
-        <Suspense fallback={null}>
-          <Disc />
-          <Runner />
-        </Suspense>
-      </group>
+      {!explore && (
+        <>
+          <Turntable />
+          <Tonearm />
+          {/* Everything that bakes record data in at construction rather than
+              reading it per frame — instance counts, accent colours, the island
+              layout — is keyed on the record so switching records rebuilds it.
+              The wall is outside: it shows the whole shelf. */}
+          <group key={record.id}>
+            <NeedleNotes />
+            <NotePop />
+            <LaneGuides />
+            <Suspense fallback={null}>
+              <Disc />
+              <Runner />
+            </Suspense>
+          </group>
+        </>
+      )}
+      {/* Lazy, because Rapier's WASM is half a megabyte the groove never
+          touches — and unmounted alongside the deck, because explore mode
+          mounts its own copy of the runner GLB and an Object3D has one parent. */}
+      <Suspense fallback={null}>
+        {explore && <ExploreWorld record={record} />}
+      </Suspense>
       <Suspense fallback={null}>
         {wallMounted && (
           <WallScene selectedId={selectedId} onSelect={onSelect} />

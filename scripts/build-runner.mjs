@@ -47,8 +47,22 @@ import {
 // than the −1 alternating limbs give. 2.0's reanimated version is a real run —
 // hands at −0.91, travelling 0.58. Its longer stride is what STRIDE_SPEED in
 // Runner.tsx had to be rescaled for.
+// Walk and the three jump clips are here for explore mode, not for the run:
+// a character controller needs a slow gait and an airborne state, and the
+// groove needs neither. They cost ~60 KB in a file the game already preloads,
+// which is cheaper than a second character GLB that has to stay in sync with
+// this one's repaint.
 const CLIPS = [
-  ["assets-src/runner-movement-2.0.glb", new Map([["Running_A", "Running_A"]])],
+  [
+    "assets-src/runner-movement-2.0.glb",
+    new Map([
+      ["Running_A", "Running_A"],
+      ["Walking_A", "Walking_A"],
+      ["Jump_Start", "Jump_Start"],
+      ["Jump_Idle", "Jump_Idle"],
+      ["Jump_Land", "Jump_Land"],
+    ]),
+  ],
   [
     "assets-src/runner-knight-original.glb",
     new Map([

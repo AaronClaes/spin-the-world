@@ -19,8 +19,8 @@ import { activeRun, selectRecord } from "./game/runState";
 import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
 import { useLaneInput } from "./game/useLaneInput";
-import { applyStemUnlocks, resetAliveMix } from "./music/rig";
-import { DEFAULT_RECORD } from "./records";
+import { applyStemUnlocks, resetAliveMix, swellAliveMix } from "./music/rig";
+import { DEFAULT_RECORD, RECORDS } from "./records";
 import type { RecordDef } from "./records/types";
 import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
@@ -28,6 +28,7 @@ import { resetLastCatchColor } from "./scene/notePalette";
 import { Scene } from "./scene/Scene";
 import { Countdown } from "./ui/Countdown";
 import { DebugHud } from "./ui/DebugHud";
+import { ExploreHud } from "./ui/ExploreHud";
 import { FullscreenButton } from "./ui/FullscreenButton";
 import { Hud } from "./ui/Hud";
 import { MuteButton } from "./ui/MuteButton";
@@ -41,7 +42,7 @@ const NEEDLE_LIFT_MS = 1800; // let the tonearm lift before the results show
 const SHOW_DEBUG_HUD =
   typeof location !== "undefined" && location.search.includes("debug");
 
-type Phase = "wall" | "countdown" | "playing" | "results";
+type Phase = "wall" | "countdown" | "playing" | "results" | "explore";
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("wall");
@@ -156,6 +157,53 @@ export default function App() {
     if (selected) armRun(selected, true);
   }, [armRun, selected]);
 
+  // Walking a record instead of playing it. Reachable from the wall and from
+  // the results panel, both gated on one star — which means the world was
+  // finished, so there is no half-built island to walk into.
+  //
+  // The music is that record's full mix, every stem unlocked and the alive
+  // swell on, because that is exactly the mix the last beat of the run that
+  // earned this was playing.
+  const enterExplore = useCallback((picked: RecordDef) => {
+    if (resultsTimer.current !== null) {
+      clearTimeout(resultsTimer.current);
+      resultsTimer.current = null;
+    }
+    selectRecord(picked);
+    setRecord(picked);
+    setSelected(picked);
+    clockState.playing = false;
+    clockState.paused = false;
+    clockState.ended = false;
+    clockState.wall = false;
+    clockState.explore = true;
+    setPaused(false);
+    setSummary(null);
+    setPhase("explore");
+    // Already looping if we came from the wall — startPreview no-ops on the
+    // record it's playing. From the results it's a full remount, because the
+    // Transport is parked at the last beat rather than running.
+    void startPreview(picked)
+      .then(() => {
+        applyStemUnlocks(
+          picked.worldPieces.length,
+          picked.stemUnlockAtPieces,
+          true,
+        );
+        swellAliveMix();
+      })
+      .catch(() => {});
+  }, []);
+
+  const exploreSelected = useCallback(() => {
+    if (selected) enterExplore(selected);
+  }, [enterExplore, selected]);
+
+  const explorePlayed = useCallback(
+    () => enterExplore(activeRun.record),
+    [enterExplore],
+  );
+
   // Replay and restart-from-pause both count in too. The camera is already at
   // the deck so there's no dive to count over, but a retry is the moment you
   // most want the beat of warning — dropping straight back onto a moving
@@ -201,6 +249,7 @@ export default function App() {
     }
     clockState.paused = false;
     clockState.playing = false;
+    clockState.explore = false;
     clockState.wall = true;
     setPaused(false);
     setSummary(null);
@@ -210,7 +259,52 @@ export default function App() {
     // whatever beat the abandoned run left it parked on.
     const back = activeRun.record;
     setSelected(back);
-    void startPreview(back).catch(() => {});
+    void startPreview(back)
+      // Coming back from explore is the one path that hands the wall a
+      // Transport already running this record with every stem unlocked — and
+      // startPreview deliberately no-ops on the record it's playing, so it
+      // never reaches its own reset. The wall plays the bed; put it back.
+      .then(() => {
+        applyStemUnlocks(0, back.stemUnlockAtPieces, true);
+        resetAliveMix();
+      })
+      .catch(() => {});
+  }, []);
+
+  // Esc leaves explore, the way it pauses a run — the same key for "get me out
+  // of this" in both places. The button in the corner is the discoverable half.
+  useEffect(() => {
+    if (phase !== "explore") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") backToWall();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, backToWall]);
+
+  // Dev shortcut straight into a world: ?explore=<recordId>. DEV-only, and
+  // deliberately so — it's the one path that skips the star gate, which is what
+  // makes it useful for a record you haven't finished and unshippable.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const id = new URLSearchParams(location.search).get("explore");
+    if (!id) return;
+    const picked = RECORDS.find((r) => r.id === id);
+    if (!picked) return;
+    selectRecord(picked);
+    setRecord(picked);
+    setSelected(picked);
+    clockState.wall = false;
+    clockState.explore = true;
+    setPhase("explore");
+    // The record's own music, under the island. Autoplay policy still wants a
+    // gesture first, and in explore there's no needle drop to be that gesture.
+    const unlock = () => {
+      void startPreview(picked).then(initSfx).catch(() => {});
+      window.removeEventListener("pointerdown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock);
+    return () => window.removeEventListener("pointerdown", unlock);
   }, []);
 
   // Esc toggles pause; auto-pause on tab switch — a backgrounded tab suspends
@@ -248,6 +342,7 @@ export default function App() {
         wallMounted={
           phase === "wall" || (phase === "countdown" && diving.current)
         }
+        explore={phase === "explore"}
         selectedId={selected?.id ?? null}
         onSelect={handleSelect}
       />
@@ -265,7 +360,14 @@ export default function App() {
           <Hud onPause={pause} />
         </>
       )}
-      {phase === "wall" && <StudioWall selected={selected} onPlay={play} />}
+      {phase === "wall" && (
+        <StudioWall
+          selected={selected}
+          onPlay={play}
+          onExplore={exploreSelected}
+        />
+      )}
+      {phase === "explore" && <ExploreHud onWall={backToWall} />}
       {phase === "countdown" && (
         <Countdown record={record} onGo={dropNeedle} onDone={countedIn} />
       )}
@@ -280,6 +382,7 @@ export default function App() {
         <ResultsOverlay
           summary={summary}
           onReplay={restart}
+          onExplore={explorePlayed}
           onWall={backToWall}
         />
       )}

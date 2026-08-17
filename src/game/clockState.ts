@@ -11,6 +11,10 @@ export const clockState = {
   // On the studio wall (title screen). The camera rig flies between the wall
   // pose and the game pose; dropping the needle is a camera dive.
   wall: true,
+  // Walking around a finished record. A third camera state, and the only one
+  // the rig doesn't drive: Ecctrl's controls own the camera outright while
+  // this is set, so CameraRig has to stand down rather than fight it.
+  explore: false,
   // Interpolated lane for visuals (runner radius, camera lean). The committed
   // integer lane lives in the store; collection never reads this.
   laneVisual: 1,

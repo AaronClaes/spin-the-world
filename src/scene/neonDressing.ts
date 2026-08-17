@@ -17,6 +17,7 @@ import {
   SphereGeometry,
   Vector3,
 } from "three";
+import { clockState } from "../game/clockState";
 
 // Neon, added on top of the kitbash.
 //
@@ -566,16 +567,38 @@ function lampHead(hex: string, band: number, size: number) {
       bulb.position.copy(at);
       root.add(pulsing(bulb, 0.12, 2.2, 1.1));
 
-      // A soft ball of spill around the head, so the lamp lights something.
-      // Deliberately tight: at 3.4× the bulb and a third opacity these read as
-      // cyan bubbles floating over the block rather than as lamps, because the
-      // halo was bigger than the post holding it up.
-      const halo = new Mesh(
-        new SphereGeometry(extent.x * size * 2.1, 10, 8),
-        glowMaterial(hex, 0.05, 0.14),
-      );
-      halo.position.copy(at);
-      root.add(pulsing(halo, 0.2, 2.2, 1.1));
+      // The spill. Which primitive that is depends on where the camera is, and
+      // this is the one place in the dressing where that's true.
+      //
+      // From above, a ball of additive glow around the head IS the lamp: the
+      // block is near-black asphalt seen small, and the sphere reads as light
+      // in air. Standing on the pavement it stops working entirely — additive
+      // glow over a pale surface at two metres saturates toward white and keeps
+      // its silhouette, so the lamp comes with a frosted balloon stuck on it.
+      //
+      // What reads as light at that range is light ON something. The taxi's
+      // underglow was already the proof: same material, same gain, flat on the
+      // road, and it looks like a lit puddle rather than a magenta object. So
+      // walking gets a pool at the foot of the post and the sphere stays behind.
+      if (clockState.explore) {
+        const pool = new Mesh(
+          new CircleGeometry(extent.x * size * 6, 20),
+          glowMaterial(hex, 0.05, 0.28),
+        );
+        pool.rotation.x = -Math.PI / 2;
+        pool.position.set(at.x, box.min.y + extent.y * 0.004, at.z);
+        root.add(pulsing(pool, 0.2, 2.2, 1.1));
+      } else {
+        // Deliberately tight: at 3.4× the bulb and a third opacity these read
+        // as cyan bubbles floating over the block rather than as lamps,
+        // because the halo was bigger than the post holding it up.
+        const halo = new Mesh(
+          new SphereGeometry(extent.x * size * 2.1, 10, 8),
+          glowMaterial(hex, 0.05, 0.14),
+        );
+        halo.position.copy(at);
+        root.add(pulsing(halo, 0.2, 2.2, 1.1));
+      }
     });
   };
 }

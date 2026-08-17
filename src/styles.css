@@ -427,6 +427,29 @@ canvas {
   animation: pop-in 0.32s cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
 }
 
+/* One row, so the foot stays exactly as tall as it was before there were two
+   of these — see the note in ui/StudioWall.tsx. Wraps on a narrow window,
+   where two buttons genuinely don't fit and a second line beats a clipped one. */
+.wall-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* The second door out of the foot, on a record that's been finished. Needs its
+   pointer-events back for the same reason the play button does, and it is worth
+   saying twice: .overlay.wall drops them so clicks reach the records, so any
+   control added here is invisible to the mouse until it asks for them. */
+.overlay .walk-button {
+  margin: 0;
+  padding: 13px 30px;
+  font-size: 1.02rem;
+  pointer-events: auto;
+  animation: pop-in 0.32s cubic-bezier(0.22, 1.2, 0.36, 1) 0.06s backwards;
+}
+
 /* plaques render inside the 3D scene via drei <Html> */
 .plaque-html {
   pointer-events: none;
@@ -539,6 +562,47 @@ canvas {
   }
 
   .wall-hint.touch {
+    display: block;
+  }
+}
+
+/* ------------------------------------------------ explore mode chrome --- */
+/* Explore is all world and no HUD, so this is two things and no more: the way
+   out at the top, the controls along the bottom. No scrim — the whole point of
+   the mode is the island — and no pointer events either, because looking around
+   is a drag on the canvas underneath this. */
+.overlay.explore-hud {
+  background: none;
+  justify-content: space-between;
+  padding: 18px 0 20px;
+  pointer-events: none;
+}
+
+.overlay .explore-exit {
+  align-self: flex-start;
+  margin-left: 18px;
+  pointer-events: auto;
+}
+
+/* The one thing a player arriving from the wall has never been told. Stays up
+   rather than fading: it costs a line at the bottom of a screen that is
+   otherwise all world. */
+.explore-keys {
+  font-size: 0.85rem;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.explore-keys.touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .explore-keys.keys {
+    display: none;
+  }
+
+  .explore-keys.touch {
     display: block;
   }
 }
