@@ -169,11 +169,20 @@ function Notes() {
         onUpdate={(m) => {
           // stock three multiplies instance colour into the diffuse only —
           // tint the glow too, or every note would shine the same white
+          //
+          // `.rgb`, not `vColor`, and it has to stay that way: three made
+          // vColor a vec4 to carry vertex alpha, so `vec3 *= vec4` stopped
+          // compiling. An InstancedMesh's colour arrives under USE_COLOR in the
+          // fragment stage (the prefix defines it for instancingColor too), so
+          // this branch is live and a type error in it takes the whole material
+          // down — which renders as the notes silently not being there, with
+          // the lane guides and the pieces around them all fine. The swizzle is
+          // valid on a vec3 as well, so it holds whichever three is installed.
           m.onBeforeCompile = (shader) => {
             shader.fragmentShader = shader.fragmentShader.replace(
               "#include <emissivemap_fragment>",
               "#include <emissivemap_fragment>\n" +
-                "#ifdef USE_COLOR\n\ttotalEmissiveRadiance *= vColor;\n#endif",
+                "#ifdef USE_COLOR\n\ttotalEmissiveRadiance *= vColor.rgb;\n#endif",
             );
           };
         }}
