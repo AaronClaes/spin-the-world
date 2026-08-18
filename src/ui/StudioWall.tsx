@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { loadProgress } from "../game/persistence";
 import type { RecordDef } from "../records/types";
+import { exploreSupported } from "./exploreSupported";
 import { InfoPanel } from "./InfoPanel";
 
 // The studio wall IS the title screen (spec §8.7). The wall, frames, and
@@ -30,7 +31,13 @@ export function StudioWall({
   // such thing as a half-built island to walk around in. Read here rather than
   // held in state because the wall remounts on the way back from a run, which
   // is the only moment this can change.
-  const walkable = selected ? loadProgress(selected.id).stars >= 1 : false;
+  //
+  // Earned it and can actually walk it: explore is keyboard-only, so a phone
+  // never sees this button (ui/exploreSupported.ts).
+  const walkable =
+    selected !== null &&
+    loadProgress(selected.id).stars >= 1 &&
+    exploreSupported();
 
   return (
     <div className="overlay wall">

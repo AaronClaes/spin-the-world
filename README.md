@@ -39,6 +39,15 @@ top-right corner also carries mute — everything, on any screen, remembered
 between visits — and fullscreen, where the browser supports it (iPhone Safari
 doesn't, so the button isn't there).
 
+## Step inside
+
+Finish a world — every piece caught, which is also what earns the first star —
+and the record opens up: **Step inside** on the results screen or the wall drops
+you into the island at your own height, the same tiles and props scaled up by
+one factor. **WASD** or the arrows to walk, **shift** to run, **space** to jump,
+drag to look, **Esc** to leave. The record's music keeps playing with everything
+unlocked. Keyboard only, so the button doesn't appear on a phone.
+
 ## Development
 
 ```bash

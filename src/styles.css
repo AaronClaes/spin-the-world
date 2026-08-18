@@ -593,20 +593,6 @@ canvas {
   text-align: center;
 }
 
-.explore-keys.touch {
-  display: none;
-}
-
-@media (hover: none) {
-  .explore-keys.keys {
-    display: none;
-  }
-
-  .explore-keys.touch {
-    display: block;
-  }
-}
-
 /* ------------------------------------------- credits behind the ⓘ ------ */
 /* The wall should read as a room, not a README — the jam line, asset
    credits and stack live in a panel instead of along the bottom edge. */

@@ -11,11 +11,13 @@ export function ExploreHud({ onWall }: { onWall: () => void }) {
       <button className="secondary explore-exit" onClick={onWall}>
         Back to the wall
       </button>
-      <p className="explore-keys keys">
+      {/* One line, not a keys/touch pair like the wall's hint: the mode is only
+          offered where there's a keyboard (ui/exploreSupported.ts), so there is
+          no touch reading of this to write. */}
+      <p className="explore-keys">
         WASD or the arrows to walk · shift to run · space to jump · drag to look
         · Esc to leave
       </p>
-      <p className="explore-keys touch">drag to look around</p>
     </div>
   );
 }

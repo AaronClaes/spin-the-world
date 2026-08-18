@@ -1,3 +1,4 @@
+import { exploreSupported } from "./exploreSupported";
 import { Star } from "./icons";
 
 export interface RunSummary {
@@ -131,7 +132,7 @@ export function ResultsOverlay({
             better answer to "the world came alive" than reading its stats. Above
             the wall, below the replay: chasing the next star is still the
             habitual action. */}
-        {stars >= 1 && (
+        {stars >= 1 && exploreSupported() && (
           <button className="secondary" onClick={onExplore}>
             Step inside
           </button>
