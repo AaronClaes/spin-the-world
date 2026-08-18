@@ -7,16 +7,10 @@ import {
 } from "ecctrl/animation";
 import { EcctrlCameraControls } from "ecctrl/camera";
 import type { EcctrlCameraControlsHandle } from "ecctrl/camera";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { Group } from "three";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
-import {
-  arrivalPose,
-  type CamPose,
-  establishingPose,
-  RUNNER_H,
-  RUNNER_SCALE,
-} from "./scale";
+import { arrivalPose, type CamPose, RUNNER_H, RUNNER_SCALE } from "./scale";
 import { useExploreInput } from "./useExploreInput";
 
 // The listener, off the record and onto the island. Same GLB the groove uses
@@ -100,14 +94,10 @@ function RunnerModel() {
 
 export function ExploreRunner({
   spawn,
-  islandRadius,
-  scale,
-  onReady,
+  from,
 }: {
   spawn: [number, number, number];
-  islandRadius: number; // unscaled, off the IslandDef
-  scale: number;
-  onReady: () => void;
+  from: CamPose; // the establishing shot the camera is already sitting on
 }) {
   const ecctrl = useRef<EcctrlHandle>(null);
   const camera = useRef<EcctrlCameraControlsHandle>(null);
@@ -117,12 +107,11 @@ export function ExploreRunner({
   // camera is following him instead.
   const dive = useRef<number | null>(null);
 
-  const from = useMemo(
-    () => establishingPose(spawn, islandRadius, scale),
-    [spawn, islandRadius, scale],
-  );
-
-  useEffect(() => {
+  // Layout, not passive: this hands the controls their target inside the same
+  // commit that mounts them, so no frame is drawn in between. They arrive
+  // pointed at the establishing shot the camera is already on (ExploreWorld's
+  // Arrival), and this only has to agree with it.
+  useLayoutEffect(() => {
     const c = camera.current;
     if (!c) return;
     c.minDistance = 2;
@@ -135,13 +124,7 @@ export function ExploreRunner({
     c.maxPolarAngle = Math.PI * 0.49;
     c.setLookAt(...from.position, ...from.target, false);
     dive.current = 0;
-    // Everything in this mode shares one Suspense boundary, so no effect down
-    // here runs until the chunk, Rapier's wasm, the props sidecar and both GLBs
-    // have all landed — which makes this the honest moment to say the island
-    // exists, and it says it with the camera already pointed at the shot rather
-    // than a frame later (Scene.tsx holds the room up until then).
-    onReady();
-  }, [from, onReady]);
+  }, [from]);
 
   // Any input during the flight is a request to be down there now, so it
   // collapses the rest of the descent into a third of a second rather than

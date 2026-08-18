@@ -1,12 +1,19 @@
+import { useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { useControls } from "leva";
-import { useMemo } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import type { RecordDef } from "../../records/types";
 import { islandFor } from "../islandLayout";
 import { ExplorePlate } from "./ExplorePlate";
 import { ExploreProps } from "./ExploreProps";
 import { ExploreRunner } from "./ExploreRunner";
-import { DEFAULT_SCALE, SPAWN_CLEARANCE, spawnTile } from "./scale";
+import {
+  type CamPose,
+  DEFAULT_SCALE,
+  establishingPose,
+  SPAWN_CLEARANCE,
+  spawnTile,
+} from "./scale";
 
 // Walking around a record you've finished.
 //
@@ -15,6 +22,37 @@ import { DEFAULT_SCALE, SPAWN_CLEARANCE, spawnTile } from "./scale";
 // SCALE, and it's a slider rather than a constant on purpose: how big an island
 // should feel is a judgement you can only make from inside it, and rebuilding
 // the app between guesses is how that judgement never gets made.
+
+// The cut, and the reason it's a component rather than an effect.
+//
+// EcctrlCameraControls takes ownership of the camera the frame it mounts, and
+// aims it at its own default target — the origin. Mounted while the camera is
+// still hanging in front of the studio wall, that means it snaps to looking
+// straight up at the underside of the turntable from sixty units below, and
+// holds it there until our own setLookAt lands. Measured at 233ms, and no
+// amount of effect-ordering closes it reliably: the flush competes with a
+// megabyte of chunk for the same main thread.
+//
+// So the character and its controls don't exist yet. This mounts with the
+// terrain, puts the camera on the establishing shot itself, and only then lets
+// the runner in — by which point the controls find a camera already looking at
+// the island, and their default target IS the island. The frame that used to be
+// wrong is now the frame the whole arrival is built around.
+function Arrival({
+  pose,
+  onArrived,
+}: {
+  pose: CamPose;
+  onArrived: () => void;
+}) {
+  const camera = useThree((s) => s.camera);
+  useLayoutEffect(() => {
+    camera.position.set(...pose.position);
+    camera.lookAt(...pose.target);
+    onArrived();
+  }, [camera, pose, onArrived]);
+  return null;
+}
 
 function ExploreScene({
   record,
@@ -25,6 +63,7 @@ function ExploreScene({
   scale: number;
   onReady: () => void;
 }) {
+  const [armed, setArmed] = useState(false);
   const island = useMemo(() => islandFor(record.id), [record.id]);
   const spawn = useMemo(() => {
     const at = spawnTile(island);
@@ -39,6 +78,17 @@ function ExploreScene({
       number,
     ];
   }, [island, scale]);
+
+  const establish = useMemo(
+    () => establishingPose(spawn, island.radius, scale),
+    [spawn, island.radius, scale],
+  );
+
+  // Camera's on the shot, so the room can come down and the runner can arrive.
+  const arrive = useCallback(() => {
+    setArmed(true);
+    onReady();
+  }, [onReady]);
 
   return (
     /* Fixed, not "vary". A varying step is clamped to half a second, and half
@@ -71,12 +121,12 @@ function ExploreScene({
         model={record.dioramaModel}
         scale={scale}
       />
-      <ExploreRunner
-        spawn={spawn}
-        islandRadius={island.radius}
-        scale={scale}
-        onReady={onReady}
-      />
+      {/* One commit apart, deliberately — see Arrival. */}
+      {armed ? (
+        <ExploreRunner spawn={spawn} from={establish} />
+      ) : (
+        <Arrival pose={establish} onArrived={arrive} />
+      )}
     </Physics>
   );
 }
