@@ -14,7 +14,7 @@ import {
   startPreview,
 } from "./audio/transport";
 import { clockState } from "./game/clockState";
-import { saveRunResult } from "./game/persistence";
+import { loadProgress, saveRunResult } from "./game/persistence";
 import { activeRun, selectRecord } from "./game/runState";
 import { computeMaxScore, starsForRun } from "./game/score";
 import { useGameStore } from "./game/store";
@@ -25,10 +25,11 @@ import type { RecordDef } from "./records/types";
 import { clearFlights } from "./scene/flights";
 import { clearNotePops } from "./scene/NotePop";
 import { resetLastCatchColor } from "./scene/notePalette";
-import { Scene } from "./scene/Scene";
+import { preloadExploreWorld, Scene } from "./scene/Scene";
 import { Countdown } from "./ui/Countdown";
 import { DebugHud } from "./ui/DebugHud";
 import { ExploreHud } from "./ui/ExploreHud";
+import { exploreSupported } from "./ui/exploreSupported";
 import { FullscreenButton } from "./ui/FullscreenButton";
 import { Hud } from "./ui/Hud";
 import { MuteButton } from "./ui/MuteButton";
@@ -55,6 +56,10 @@ export default function App() {
   const [selected, setSelected] = useState<RecordDef | null>(null);
   const [paused, setPaused] = useState(false);
   const [summary, setSummary] = useState<RunSummary | null>(null);
+  // Whether the island has a frame to show yet. Explore mode is a megabyte of
+  // Rapier away, and until it lands the room (or the deck) stays up in its
+  // place rather than blinking out to a bare sky — see Scene.tsx.
+  const [exploreReady, setExploreReady] = useState(false);
   const resultsTimer = useRef<number | null>(null);
   // Whether this countdown is being counted over a camera dive or from a deck
   // the camera is already parked at — a restart shouldn't drag the whole wall
@@ -179,6 +184,7 @@ export default function App() {
     clockState.explore = true;
     setPaused(false);
     setSummary(null);
+    setExploreReady(false);
     setPhase("explore");
     // Already looping if we came from the wall — startPreview no-ops on the
     // record it's playing. From the results it's a full remount, because the
@@ -194,6 +200,22 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
+
+  // Stable, because it's a prop on Scene and it lands in an effect dependency
+  // list inside the explore tree.
+  const onExploreReady = useCallback(() => setExploreReady(true), []);
+
+  // Fetched while you're deciding, not while you're waiting. A walkable record
+  // on the wall is the earliest honest signal that a megabyte of physics might
+  // be wanted, and it costs nothing on the records nobody has finished — which
+  // on a first visit is all of them.
+  useEffect(() => {
+    if (phase !== "wall" || !selected) return;
+    if (loadProgress(selected.id).stars < 1 || !exploreSupported()) return;
+    const idle = window.requestIdleCallback ?? window.setTimeout;
+    const id = idle(() => void preloadExploreWorld().catch(() => {}));
+    return () => (window.cancelIdleCallback ?? window.clearTimeout)(id);
+  }, [phase, selected]);
 
   const exploreSelected = useCallback(() => {
     if (selected) enterExplore(selected);
@@ -253,6 +275,7 @@ export default function App() {
     clockState.wall = true;
     setPaused(false);
     setSummary(null);
+    setExploreReady(false);
     setPhase("wall");
     // The record you were playing is the record still selected on the wall,
     // so its bed picks straight back up — which also rewinds the Transport off
@@ -340,9 +363,15 @@ export default function App() {
         // from a real wall instead of a void — but not for a restart, where
         // the camera never left the deck
         wallMounted={
-          phase === "wall" || (phase === "countdown" && diving.current)
+          phase === "wall" ||
+          (phase === "countdown" && diving.current) ||
+          // held while the island loads, so stepping inside from the wall
+          // starts in the room rather than in nothing
+          (phase === "explore" && !exploreReady)
         }
         explore={phase === "explore"}
+        exploreReady={exploreReady}
+        onExploreReady={onExploreReady}
         selectedId={selected?.id ?? null}
         onSelect={handleSelect}
       />
@@ -367,7 +396,16 @@ export default function App() {
           onExplore={exploreSelected}
         />
       )}
-      {phase === "explore" && <ExploreHud onWall={backToWall} />}
+      {/* Waits for the island. Told to press WASD over a photograph of the
+          room is worse than being told nothing. */}
+      {phase === "explore" && exploreReady && (
+        <ExploreHud onWall={backToWall} />
+      )}
+      {phase === "explore" && !exploreReady && (
+        <div className="overlay stepping-in">
+          <p>stepping inside…</p>
+        </div>
+      )}
       {phase === "countdown" && (
         <Countdown record={record} onGo={dropNeedle} onDone={countedIn} />
       )}

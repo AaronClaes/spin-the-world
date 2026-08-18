@@ -43,8 +43,14 @@ import { Tonearm } from "./Tonearm";
 import { Turntable } from "./Turntable";
 import { WALL_CAM_POS, WallScene } from "./WallScene";
 
+// Nearly a megabyte gzipped, most of it Rapier — and 2.5MB of it to parse
+// before the first frame exists. Exported so the wall can start fetching it the
+// moment a record is walkable, which is the difference between stepping inside
+// instantly and standing in the room waiting for a download (App.tsx).
+export const preloadExploreWorld = () => import("./explore/ExploreWorld");
+
 const ExploreWorld = lazy(() =>
-  import("./explore/ExploreWorld").then((m) => ({ default: m.ExploreWorld })),
+  preloadExploreWorld().then((m) => ({ default: m.ExploreWorld })),
 );
 
 const events: ResolveEvent[] = [];
@@ -264,6 +270,8 @@ export function Scene({
   wall,
   wallMounted,
   explore,
+  exploreReady,
+  onExploreReady,
   selectedId,
   onSelect,
 }: {
@@ -271,6 +279,8 @@ export function Scene({
   wall: boolean; // wall look (post stack) — true only on the title screen
   wallMounted: boolean; // wall geometry in the tree — also true mid-dive
   explore: boolean; // walking the island instead of playing the groove
+  exploreReady: boolean; // its first frame exists, so the old view can go
+  onExploreReady: () => void;
   selectedId: string | null; // the frame that's lifted, spinning and audible
   onSelect: (record: RecordDef) => void;
 }) {
@@ -290,7 +300,13 @@ export function Scene({
       <CameraRig />
       <Lights />
 
-      {!explore && (
+      {/* Held on screen until the island has a first frame to replace it with.
+          The explore chunk, Rapier's wasm and the props sidecar all suspend
+          inside one boundary, so before this the room (or the deck, coming from
+          the results panel) blinked out and left a bare sky standing in for
+          however long that took. Nothing about the previous view has to change
+          to be a loading screen; it just has to still be there. */}
+      {(!explore || !exploreReady) && (
         <>
           <Turntable />
           <Tonearm />
@@ -313,7 +329,9 @@ export function Scene({
           touches — and unmounted alongside the deck, because explore mode
           mounts its own copy of the runner GLB and an Object3D has one parent. */}
       <Suspense fallback={null}>
-        {explore && <ExploreWorld record={record} />}
+        {explore && (
+          <ExploreWorld record={record} onReady={onExploreReady} />
+        )}
       </Suspense>
       <Suspense fallback={null}>
         {wallMounted && (

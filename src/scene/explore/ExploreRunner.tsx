@@ -102,10 +102,12 @@ export function ExploreRunner({
   spawn,
   islandRadius,
   scale,
+  onReady,
 }: {
   spawn: [number, number, number];
   islandRadius: number; // unscaled, off the IslandDef
   scale: number;
+  onReady: () => void;
 }) {
   const ecctrl = useRef<EcctrlHandle>(null);
   const camera = useRef<EcctrlCameraControlsHandle>(null);
@@ -133,7 +135,13 @@ export function ExploreRunner({
     c.maxPolarAngle = Math.PI * 0.49;
     c.setLookAt(...from.position, ...from.target, false);
     dive.current = 0;
-  }, [from]);
+    // Everything in this mode shares one Suspense boundary, so no effect down
+    // here runs until the chunk, Rapier's wasm, the props sidecar and both GLBs
+    // have all landed — which makes this the honest moment to say the island
+    // exists, and it says it with the camera already pointed at the shot rather
+    // than a frame later (Scene.tsx holds the room up until then).
+    onReady();
+  }, [from, onReady]);
 
   // Any input during the flight is a request to be down there now, so it
   // collapses the rest of the descent into a third of a second rather than

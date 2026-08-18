@@ -237,3 +237,8 @@ export function establishingPose(
     target: [0, y, 0],
   };
 }
+
+// Capsule half height (RUNNER_H / 2) plus a little. Lives here rather than in
+// ExploreRunner because the spawn point is computed in ExploreWorld and the two
+// have to agree about where the floor is.
+export const SPAWN_CLEARANCE = RUNNER_H / 2 + 0.15;

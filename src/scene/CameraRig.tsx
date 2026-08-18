@@ -65,18 +65,38 @@ export const fovForAspect = (aspect: number): number =>
 // Ease-in-out gives it a take-off and a landing.
 const FLIGHT_SECS = 2.0;
 
+// Coming back from the island is the one return trip that must NOT be flown.
+// The room hangs 60 units under the deck and the wall itself is a plane, so a
+// flight from wherever the explore camera happened to be orbiting can cross
+// behind it — and from behind, a wall is a sheet of paper with a room painted
+// on one side. Cut to the wall instead and play a short arrival there: the
+// same information, none of the exposure. (See §8.7 — the room is a place, and
+// the only thing that ever says otherwise is a camera that walks around it.)
+const INTRO_SECS = 1.0;
+// Where that arrival starts: the wall pose, pulled back and lifted a touch, so
+// the room settles into frame rather than appearing in it.
+const INTRO_BACK = 0.8;
+const INTRO_UP = 0.1;
+
 const camTarget = new Vector3();
 const lookTarget = new Vector3();
 const WALL_POS = new Vector3(...WALL_CAM_POS);
 const WALL_LOOK = new Vector3(...WALL_LOOK_AT);
+const INTRO_POS = new Vector3(
+  WALL_CAM_POS[0],
+  WALL_CAM_POS[1] + INTRO_UP,
+  WALL_CAM_POS[2] + INTRO_BACK,
+);
 
 export function CameraRig() {
   const cam = useThree((s) => s.camera) as PerspectiveCamera;
   const size = useThree((s) => s.size);
   const look = useRef(WALL_LOOK.clone());
   const prevWall = useRef(clockState.wall);
+  const prevExplore = useRef(clockState.explore);
   const flight = useRef<{
     t: number;
+    secs: number;
     fromPos: Vector3;
     fromLook: Vector3;
   } | null>(null);
@@ -95,18 +115,25 @@ export function CameraRig() {
     // back to the wall from explore flies from wherever Ecctrl left the camera.
     if (clockState.explore) {
       prevWall.current = clockState.wall;
+      prevExplore.current = true;
       return;
     }
+    const leftTheIsland = prevExplore.current;
+    prevExplore.current = false;
 
     // a wall flip (needle-drop dive or back-to-wall) starts a flight from
-    // wherever the camera is right now
+    // wherever the camera is right now — except off the island, which cuts to
+    // the room and arrives there instead of travelling to it
     if (clockState.wall !== prevWall.current) {
       prevWall.current = clockState.wall;
-      flight.current = {
-        t: 0,
-        fromPos: camera.position.clone(),
-        fromLook: look.current.clone(),
-      };
+      flight.current = leftTheIsland
+        ? { t: 0, secs: INTRO_SECS, fromPos: INTRO_POS.clone(), fromLook: WALL_LOOK.clone() }
+        : {
+            t: 0,
+            secs: FLIGHT_SECS,
+            fromPos: camera.position.clone(),
+            fromLook: look.current.clone(),
+          };
     }
 
     if (clockState.wall) {
@@ -127,7 +154,7 @@ export function CameraRig() {
     if (flight.current) {
       const f = flight.current;
       f.t += Math.min(delta, 1 / 30); // a tab-switch spike shouldn't skip it
-      const u = Math.min(1, f.t / FLIGHT_SECS);
+      const u = Math.min(1, f.t / f.secs);
       const e = u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
       camera.position.lerpVectors(f.fromPos, camTarget, e);
       look.current.lerpVectors(f.fromLook, lookTarget, e);

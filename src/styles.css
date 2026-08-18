@@ -566,6 +566,33 @@ canvas {
   }
 }
 
+/* The held moment. Explore mode's chunk is the biggest thing this game ever
+   fetches, and the scene behind this line is the room you were just standing in,
+   still lit and still playing — so all this has to do is admit that something is
+   happening. No scrim: covering the room would waste the one thing that makes
+   the wait bearable, which is that you can still see where you are. */
+.overlay.stepping-in {
+  background: none;
+  justify-content: flex-end;
+  padding-bottom: 44px;
+  pointer-events: none;
+}
+
+.overlay.stepping-in p {
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  /* Only shows up if the wait is real. A prefetched chunk lands inside this
+     delay and the line never appears at all, which is the intended outcome. */
+  animation: stepping-in-fade 0.5s ease-out 0.35s forwards;
+}
+
+@keyframes stepping-in-fade {
+  to {
+    opacity: 0.75;
+  }
+}
+
 /* ------------------------------------------------ explore mode chrome --- */
 /* Explore is all world and no HUD, so this is two things and no more: the way
    out at the top, the controls along the bottom. No scrim — the whole point of
