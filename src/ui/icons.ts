@@ -16,6 +16,7 @@ export {
   CaretRight,
   CornersIn,
   CornersOut,
+  GithubLogo,
   Pause,
   SpeakerSimpleHigh,
   SpeakerSimpleSlash,

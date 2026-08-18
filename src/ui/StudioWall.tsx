@@ -2,7 +2,10 @@ import { useState } from "react";
 import { loadProgress } from "../game/persistence";
 import type { RecordDef } from "../records/types";
 import { exploreSupported } from "./exploreSupported";
+import { GithubLogo } from "./icons";
 import { InfoPanel } from "./InfoPanel";
+
+const REPO_URL = "https://github.com/AaronClaes/spin-the-world";
 
 // The studio wall IS the title screen (spec §8.7). The wall, frames, and
 // records are real 3D (scene/WallScene.tsx) — a completed record hangs as the
@@ -88,10 +91,26 @@ export function StudioWall({
         )}
       </div>
 
-      {/* absolute, so the head/foot keep their space-between split */}
-      <button className="info-button" onClick={() => setInfo(true)}>
-        credits
-      </button>
+      {/* Absolute, so the head/foot keep their space-between split. Source
+          before credits: the repo is the one of the two that's about the game
+          rather than about the assets in it. */}
+      <div className="wall-links">
+        <a
+          className="info-button"
+          href={REPO_URL}
+          target="_blank"
+          rel="noreferrer"
+          // the label is hidden on small screens, and display:none takes it out
+          // of the accessibility tree with it — so the name lives here instead
+          aria-label="source on GitHub"
+        >
+          <GithubLogo weight="fill" aria-hidden />
+          <span className="link-label">source</span>
+        </a>
+        <button className="info-button" onClick={() => setInfo(true)}>
+          credits
+        </button>
+      </div>
 
       {info && <InfoPanel onClose={() => setInfo(false)} />}
     </div>

@@ -624,11 +624,23 @@ canvas {
 /* The wall should read as a room, not a README — the jam line, asset
    credits and stack live in a panel instead of along the bottom edge. */
 
-/* .overlay-scoped so these win over the generic .overlay button skin */
-.overlay .info-button {
+/* The pair of quiet utility pills in the bottom corner. Absolute, so the
+   head/foot keep their space-between split, and a row so the two share one
+   baseline rather than each needing its own offset. */
+.wall-links {
   position: absolute;
   right: 20px;
   bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* .overlay-scoped so these win over the generic .overlay button skin */
+.overlay .info-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
   padding: 8px 18px;
   border: 1px solid rgba(232, 226, 213, 0.32);
@@ -650,6 +662,25 @@ canvas {
     opacity 0.2s ease,
     background 0.2s ease,
     border-color 0.2s ease;
+}
+
+/* it's an <a>, and a link's underline has no business on a pill */
+.overlay a.info-button {
+  text-decoration: none;
+}
+
+/* A small landscape phone doesn't have room for two labelled pills beside the
+   play button — measured a 49px overlap at 568x320, and a button under another
+   button is the bug this wall has already had once. The mark carries it alone;
+   the accessible name is the same either way. */
+@media (max-width: 760px) {
+  .wall-links .link-label {
+    display: none;
+  }
+
+  .overlay a.info-button {
+    padding: 8px 12px;
+  }
 }
 
 .overlay .info-button:hover {
