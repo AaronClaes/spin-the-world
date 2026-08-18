@@ -10,7 +10,13 @@ import type { EcctrlCameraControlsHandle } from "ecctrl/camera";
 import { useEffect, useMemo, useRef } from "react";
 import type { Group } from "three";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
-import { RUNNER_H, RUNNER_SCALE } from "./scale";
+import {
+  arrivalPose,
+  type CamPose,
+  establishingPose,
+  RUNNER_H,
+  RUNNER_SCALE,
+} from "./scale";
 import { useExploreInput } from "./useExploreInput";
 
 // The listener, off the record and onto the island. Same GLB the groove uses
@@ -41,6 +47,25 @@ const CAPSULE_R = 0.35;
 const CAPSULE_HALF = RUNNER_H / 2 - CAPSULE_R;
 // Feet at the bottom of the capsule.
 const MODEL_Y = -(CAPSULE_HALF + CAPSULE_R);
+
+// The arrival. Long enough to be a shot rather than a transition — you get to
+// look at the record with a world on it, and then the world is what you're
+// standing in, which is the whole promise of the mode and the one moment it can
+// be made in one move.
+const DIVE_SECS = 2.6;
+const SKIP_SECS = 0.35;
+// How far out the player can orbit once they've landed. About two and a half
+// island radii at SCALE 16 — the whole plate in frame, and no further, because
+// past that you're looking at the empty vinyl the island sits on.
+const ORBIT_MAX = 40;
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const distanceOf = (p: CamPose) =>
+  Math.hypot(
+    p.position[0] - p.target[0],
+    p.position[1] - p.target[1],
+    p.position[2] - p.target[2],
+  );
 
 function RunnerModel() {
   const group = useRef<Group>(null);
@@ -75,46 +100,91 @@ function RunnerModel() {
 
 export function ExploreRunner({
   spawn,
+  islandRadius,
+  scale,
 }: {
   spawn: [number, number, number];
+  islandRadius: number; // unscaled, off the IslandDef
+  scale: number;
 }) {
   const ecctrl = useRef<EcctrlHandle>(null);
   const camera = useRef<EcctrlCameraControlsHandle>(null);
   useExploreInput(ecctrl);
 
+  // Elapsed seconds of the arrival flight; null once it has landed and the
+  // camera is following him instead.
+  const dive = useRef<number | null>(null);
+
+  const from = useMemo(
+    () => establishingPose(spawn, islandRadius, scale),
+    [spawn, islandRadius, scale],
+  );
+
   useEffect(() => {
     const c = camera.current;
     if (!c) return;
     c.minDistance = 2;
-    c.maxDistance = 40;
+    // Raised for the length of the flight only: the establishing pose is
+    // further out than anything the player should be able to orbit to once
+    // they're standing on the island, and CameraControls clamps setLookAt.
+    c.maxDistance = Math.max(ORBIT_MAX, distanceOf(from) * 1.05);
     // Stops the orbit dropping under the plate, which from below is a view of
     // the back of the label.
     c.maxPolarAngle = Math.PI * 0.49;
-    // Arrive looking INWARD, from just off the coast. The spawn is the tile
-    // furthest from the middle, so the camera goes further out along the same
-    // radius — anywhere else and the first thing you see is the runner against
-    // the sky with the whole island behind the camera.
-    const out = Math.hypot(spawn[0], spawn[2]);
-    const rx = out > 0.001 ? spawn[0] / out : 0;
-    const rz = out > 0.001 ? spawn[2] / out : 1;
-    c.setLookAt(
-      spawn[0] + rx * 7,
-      spawn[1] + 4,
-      spawn[2] + rz * 7,
-      spawn[0],
-      spawn[1] + 1,
-      spawn[2],
-      false,
-    );
-  }, [spawn]);
+    c.setLookAt(...from.position, ...from.target, false);
+    dive.current = 0;
+  }, [from]);
 
-  useFrame(() => {
+  // Any input during the flight is a request to be down there now, so it
+  // collapses the rest of the descent into a third of a second rather than
+  // cutting — a snap from halfway through a dive is worse than the dive.
+  useEffect(() => {
+    const skip = () => {
+      if (dive.current !== null)
+        dive.current = Math.max(dive.current, DIVE_SECS - SKIP_SECS);
+    };
+    window.addEventListener("keydown", skip);
+    window.addEventListener("pointerdown", skip);
+    return () => {
+      window.removeEventListener("keydown", skip);
+      window.removeEventListener("pointerdown", skip);
+    };
+  }, []);
+
+  useFrame((_, delta) => {
     const handle = ecctrl.current;
     const c = camera.current;
     if (!handle || !c) return;
+    const at = handle.currPos;
+
+    if (dive.current !== null) {
+      dive.current += Math.min(delta, 1 / 30); // a hitch shouldn't skip it
+      const u = Math.min(1, dive.current / DIVE_SECS);
+      // The same take-off-and-landing curve as the needle-drop dive
+      // (scene/CameraRig.tsx): an exponential chase is at full speed on frame
+      // one, which over a drop this long reads as a jolt.
+      const e = u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
+      // Aimed at where he actually is rather than at the spawn, so walking off
+      // mid-flight is followed down instead of fought.
+      const to = arrivalPose([at.x, at.y, at.z]);
+      c.setLookAt(
+        lerp(from.position[0], to.position[0], e),
+        lerp(from.position[1], to.position[1], e),
+        lerp(from.position[2], to.position[2], e),
+        lerp(from.target[0], to.target[0], e),
+        lerp(from.target[1], to.target[1], e),
+        lerp(from.target[2], to.target[2], e),
+        false,
+      );
+      if (u >= 1) {
+        dive.current = null;
+        c.maxDistance = ORBIT_MAX;
+      }
+      return;
+    }
+
     // EcctrlCameraControls is Drei's CameraControls with a settable up axis; it
     // does not follow anything by itself.
-    const at = handle.currPos;
     c.moveTo(at.x, at.y, at.z, true);
   });
 

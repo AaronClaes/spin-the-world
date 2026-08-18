@@ -170,3 +170,70 @@ export function hexPrism(r: number, y0: number, y1: number): Float32Array {
   }
   return new Float32Array(v);
 }
+
+// ------------------------------------------------------------------ arrival --
+
+// How you get in. Two poses and an eased flight between them: you look at the
+// record from outside, the way you have all game, and then you fall into it.
+//
+// Both sit on the same bearing — the radial line out through the spawn tile —
+// so the dive is a dolly in and down with no swing, and the frame it lands on
+// is the one it was already looking along. Radial is also what makes the
+// landing look INWARD: the camera ends further from the middle than he is, so
+// the island is what's in frame rather than the sky behind him.
+export interface CamPose {
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+type Point = readonly [number, number, number];
+
+function bearing(at: Point): [number, number] {
+  const out = Math.hypot(at[0], at[2]);
+  return out > 0.001 ? [at[0] / out, at[2] / out] : [0, 1];
+}
+
+// Over the shoulder, from just off the coast, looking in. These are in metres
+// and deliberately not scaled: how far behind a person you stand is a fact
+// about people, not about how big their island is.
+const ARRIVAL_BACK = 7;
+const ARRIVAL_UP = 4;
+const ARRIVAL_AIM_UP = 1; // his chest, not his feet
+
+export function arrivalPose(at: Point): CamPose {
+  const [bx, bz] = bearing(at);
+  return {
+    position: [
+      at[0] + bx * ARRIVAL_BACK,
+      at[1] + ARRIVAL_UP,
+      at[2] + bz * ARRIVAL_BACK,
+    ],
+    target: [at[0], at[1] + ARRIVAL_AIM_UP, at[2]],
+  };
+}
+
+// Where the flight starts: far enough out that the island reads as an object
+// again — the label, the vinyl around it, a whole world on a plate — one last
+// time before walking into it takes that reading away.
+//
+// Distance is in island radii rather than metres, because this pose has to
+// hold a composition rather than a distance, and it holds the same one at any
+// SCALE. The elevation stays under 45° for the same reason: looking straight
+// down is a map, and the thing being left behind is a diorama.
+const ESTABLISH_RADII = 2.2;
+const ESTABLISH_ELEVATION = (40 * Math.PI) / 180;
+
+export function establishingPose(
+  at: Point,
+  islandRadius: number,
+  scale: number,
+): CamPose {
+  const [bx, bz] = bearing(at);
+  const d = ESTABLISH_RADII * islandRadius * scale;
+  const flat = d * Math.cos(ESTABLISH_ELEVATION);
+  const y = GRASS_Y * scale;
+  return {
+    position: [bx * flat, y + d * Math.sin(ESTABLISH_ELEVATION), bz * flat],
+    target: [0, y, 0],
+  };
+}

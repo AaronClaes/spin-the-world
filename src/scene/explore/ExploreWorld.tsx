@@ -61,7 +61,11 @@ function ExploreScene({
         model={record.dioramaModel}
         scale={scale}
       />
-      <ExploreRunner spawn={spawn} />
+      <ExploreRunner
+        spawn={spawn}
+        islandRadius={island.radius}
+        scale={scale}
+      />
     </Physics>
   );
 }
