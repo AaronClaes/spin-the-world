@@ -1,6 +1,5 @@
 import { useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { useControls } from "leva";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import type { RecordDef } from "../../records/types";
 import { islandFor } from "../islandLayout";
@@ -19,9 +18,12 @@ import {
 //
 // The world is the record's own IslandDef, unmodified — same tiles, same
 // spots, same scenery, same prop sizes. The only thing this mode introduces is
-// SCALE, and it's a slider rather than a constant on purpose: how big an island
-// should feel is a judgement you can only make from inside it, and rebuilding
-// the app between guesses is how that judgement never gets made.
+// SCALE, and it was a leva slider while the question was open, because how big
+// an island should feel is a judgement you can only make from inside one. The
+// judgement got made — DEFAULT_SCALE, see scale.ts — so the slider is gone and
+// the number is a constant threaded through as a prop rather than read from a
+// module, which is what keeps the maths for the plate, the props, the colliders
+// and the camera all quoting the same figure.
 
 // The cut, and the reason it's a component rather than an effect.
 //
@@ -54,15 +56,14 @@ function Arrival({
   return null;
 }
 
-function ExploreScene({
+export function ExploreWorld({
   record,
-  scale,
   onReady,
 }: {
   record: RecordDef;
-  scale: number;
   onReady: () => void;
 }) {
+  const scale = DEFAULT_SCALE;
   const [armed, setArmed] = useState(false);
   const island = useMemo(() => islandFor(record.id), [record.id]);
   const spawn = useMemo(() => {
@@ -128,24 +129,5 @@ function ExploreScene({
         <Arrival pose={establish} onArrived={arrive} />
       )}
     </Physics>
-  );
-}
-
-export function ExploreWorld({
-  record,
-  onReady,
-}: {
-  record: RecordDef;
-  onReady: () => void;
-}) {
-  // Stepped, and the whole world is keyed on it: changing scale rebuilds every
-  // collider and the hull under every tile, which is not something to do on a
-  // continuous drag.
-  const { scale } = useControls("explore", {
-    scale: { value: DEFAULT_SCALE, min: 8, max: 60, step: 2 },
-  });
-
-  return (
-    <ExploreScene key={scale} record={record} scale={scale} onReady={onReady} />
   );
 }
